@@ -471,20 +471,82 @@
     <!-- Toast Container -->
     <div id="toast-container" class="fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4"></div>
 
-    <!-- Scripts -->
+    <!-- Carrega os scripts do sistema -->
     <script src="js/config.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
 
     <script>
+        // =====================================================================
+        // CONFIGURAÇÃO E VARIÁVEIS GLOBAIS
+        // =====================================================================
+        
         // Estado da página
         let clienteSelecionado = null;
         let clienteVinculado = false;
 
-        // Inicialização
+        // =====================================================================
+        // FUNÇÕES DE API (caso não existam no api.js)
+        // =====================================================================
+        
+        // Função para chamar a API
+        async function apiCall(action, data = {}) {
+            // Pega a URL da API do config.js ou usa diretamente
+            const API_URL = (typeof CONFIG !== 'undefined' && CONFIG.API_URL) 
+                ? CONFIG.API_URL 
+                : "https://script.google.com/macros/s/AKfycbzTHc9bYlnNCGkqkLarZynJ6DEObGhx8aMFJB5hQf-YXUXGN3Nb2woWn6EKxohF0wez/exec";
+            
+            // Pega o token
+            const TOKEN_KEY = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.TOKEN) 
+                ? CONFIG.STORAGE_KEYS.TOKEN 
+                : 'rpps_token';
+            
+            const token = sessionStorage.getItem(TOKEN_KEY);
+            
+            const payload = {
+                action: action,
+                token: token,
+                origem: window.location.origin,
+                ...data
+            };
+
+            try {
+                const response = await fetch(API_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'text/plain;charset=utf-8',
+                    },
+                    body: JSON.stringify(payload),
+                    redirect: 'follow'
+                });
+
+                const result = await response.json();
+
+                if (result.status === 'error') {
+                    throw new Error(result.message);
+                }
+
+                return result.data;
+
+            } catch (error) {
+                console.error("API Error:", error);
+                throw error;
+            }
+        }
+
+        // =====================================================================
+        // INICIALIZAÇÃO
+        // =====================================================================
+        
         document.addEventListener('DOMContentLoaded', function() {
             // Verifica autenticação
-            if (!verificarAutenticacao()) {
+            const TOKEN_KEY = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.TOKEN) 
+                ? CONFIG.STORAGE_KEYS.TOKEN 
+                : 'rpps_token';
+            
+            const token = sessionStorage.getItem(TOKEN_KEY);
+            
+            if (!token) {
                 window.location.href = 'index.html';
                 return;
             }
@@ -506,9 +568,17 @@
             document.getElementById('form-processo').addEventListener('submit', salvarProcesso);
         });
 
-        // Carrega dados do usuário logado
+        // =====================================================================
+        // FUNÇÕES DE USUÁRIO
+        // =====================================================================
+
         function carregarDadosUsuario() {
-            const userData = JSON.parse(sessionStorage.getItem(CONFIG.STORAGE_KEYS.USER_DATA) || '{}');
+            const USER_DATA_KEY = (typeof CONFIG !== 'undefined' && CONFIG.STORAGE_KEYS && CONFIG.STORAGE_KEYS.USER_DATA) 
+                ? CONFIG.STORAGE_KEYS.USER_DATA 
+                : 'rpps_user';
+            
+            const userData = JSON.parse(sessionStorage.getItem(USER_DATA_KEY) || '{}');
+            
             if (userData.nome) {
                 document.getElementById('user-name').textContent = userData.nome;
                 document.getElementById('user-initials').textContent = userData.nome.charAt(0).toUpperCase();
@@ -516,7 +586,10 @@
             }
         }
 
-        // Aplica máscaras nos inputs
+        // =====================================================================
+        // MÁSCARAS DE INPUT
+        // =====================================================================
+
         function aplicarMascaras() {
             // CPF
             document.getElementById('cpf-busca').addEventListener('input', function(e) {
@@ -545,7 +618,10 @@
             });
         }
 
-        // Busca cliente pelo CPF
+        // =====================================================================
+        // BUSCA DE CLIENTE
+        // =====================================================================
+
         async function buscarCliente() {
             const cpfInput = document.getElementById('cpf-busca');
             const cpf = cpfInput.value.replace(/\D/g, '');
@@ -561,7 +637,7 @@
             btn.disabled = true;
 
             try {
-                const resultado = await API.call('buscarClientePorCPF', { cpf: cpf });
+                const resultado = await apiCall('buscarClientePorCPF', { cpf: cpf });
 
                 // Esconde os dois estados
                 document.getElementById('cliente-encontrado').classList.add('hidden');
@@ -577,20 +653,18 @@
 
             } catch (error) {
                 console.error('Erro ao buscar cliente:', error);
-                
-                // Se erro for de "não encontrado", mostra formulário
-                if (error.message && error.message.includes('não encontrado')) {
-                    mostrarFormNovoCliente(cpf);
-                } else {
-                    showToast(error.message || 'Erro ao buscar cliente.', 'error');
-                }
+                // Se não encontrou, mostra formulário para cadastrar
+                mostrarFormNovoCliente(cpf);
             } finally {
                 btn.classList.remove('btn-loading');
                 btn.disabled = false;
             }
         }
 
-        // Mostra dados do cliente encontrado
+        // =====================================================================
+        // EXIBIÇÃO DE RESULTADOS
+        // =====================================================================
+
         function mostrarClienteEncontrado(cliente) {
             clienteSelecionado = cliente;
             
@@ -605,7 +679,6 @@
             document.getElementById('opcao-pular').classList.add('hidden');
         }
 
-        // Mostra formulário para cadastrar novo cliente
         function mostrarFormNovoCliente(cpf) {
             // Formata o CPF para exibição
             let cpfFormatado = cpf;
@@ -625,7 +698,6 @@
             }, 300);
         }
 
-        // Limpa seleção de cliente
         function limparCliente() {
             clienteSelecionado = null;
             document.getElementById('cpf-busca').value = '';
@@ -635,7 +707,10 @@
             document.getElementById('cpf-busca').focus();
         }
 
-        // Cadastra novo cliente e avança
+        // =====================================================================
+        // CADASTRO DE NOVO CLIENTE
+        // =====================================================================
+
         async function cadastrarEAvancar() {
             const nome = document.getElementById('novo-cliente-nome').value.trim();
             const cpf = document.getElementById('novo-cliente-cpf').value.replace(/\D/g, '');
@@ -666,7 +741,7 @@
             btn.disabled = true;
 
             try {
-                const resultado = await API.call('cadastrarCliente', {
+                const resultado = await apiCall('cadastrarCliente', {
                     nome_completo: nome,
                     cpf: cpf,
                     email: email,
@@ -690,7 +765,10 @@
             }
         }
 
-        // Avança para o passo 2 (dados do processo)
+        // =====================================================================
+        // NAVEGAÇÃO ENTRE PASSOS
+        // =====================================================================
+
         function avancarParaProcesso() {
             clienteVinculado = true;
             
@@ -722,7 +800,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Pula cadastro de cliente
         function pularCadastroCliente() {
             clienteSelecionado = null;
             clienteVinculado = false;
@@ -747,7 +824,6 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Volta para o passo 1
         function voltarParaCliente() {
             // Atualiza stepper
             document.getElementById('step1-indicator').classList.remove('step-complete');
@@ -766,7 +842,10 @@
             window.scrollTo({ top: 0, behavior: 'smooth' });
         }
 
-        // Salva o processo
+        // =====================================================================
+        // SALVAR PROCESSO
+        // =====================================================================
+
         async function salvarProcesso(e) {
             e.preventDefault();
 
@@ -811,7 +890,7 @@
                     payload.cpf_cliente = clienteSelecionado.cpf ? clienteSelecionado.cpf.replace(/\D/g, '') : '';
                 }
 
-                const resultado = await API.call('criarProcesso', payload);
+                const resultado = await apiCall('criarProcesso', payload);
 
                 showToast('Processo cadastrado com sucesso!', 'success');
 
@@ -832,7 +911,10 @@
             }
         }
 
-        // Toast de notificação
+        // =====================================================================
+        // TOAST DE NOTIFICAÇÃO
+        // =====================================================================
+
         function showToast(message, type = 'info') {
             const container = document.getElementById('toast-container');
             
@@ -866,7 +948,10 @@
             }, 4000);
         }
 
-        // Toggle Sidebar
+        // =====================================================================
+        // FUNÇÕES AUXILIARES
+        // =====================================================================
+
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
             const overlay = document.getElementById('sidebar-overlay');
@@ -874,7 +959,6 @@
             overlay.classList.toggle('hidden');
         }
 
-        // Logout
         function logout() {
             if (confirm('Deseja sair do sistema?')) {
                 sessionStorage.clear();
