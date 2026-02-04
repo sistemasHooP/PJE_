@@ -1,0 +1,90 @@
+/* * ============================================================================
+ * ARQUIVO: css/style.css
+ * DESCRIÇÃO: Estilos globais e customizações específicas que o Tailwind não cobre.
+ * ============================================================================
+ */
+
+/* --- Configurações Base --- */
+html {
+    scroll-behavior: smooth;
+    -webkit-tap-highlight-color: transparent; /* Remove flash cinza ao clicar em mobile */
+}
+
+body {
+    font-family: 'Inter', sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* --- Scrollbar Personalizada (Webkit - Chrome/Safari/Edge) --- */
+/* Deixa a barra de rolagem mais elegante em desktops */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #f1f5f9; /* Slate-100 */
+}
+
+::-webkit-scrollbar-thumb {
+    background: #cbd5e1; /* Slate-300 */
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8; /* Slate-400 */
+}
+
+/* --- Suporte a Mobile (Safe Areas para iPhone X+) --- */
+.pb-safe {
+    padding-bottom: env(safe-area-inset-bottom);
+}
+
+.pt-safe {
+    padding-top: env(safe-area-inset-top);
+}
+
+/* --- Estilos Específicos da Timeline (Detalhe do Processo) --- */
+/* Cria a linha vertical cinza que conecta as bolinhas */
+.timeline-line {
+    position: relative;
+}
+
+.timeline-line::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    /* Alinha a linha vertical com o centro das bolinhas */
+    /* A bolinha tem w-8 (2rem) ou w-10 (2.5rem). Metade é aprox 1rem + padding esquerdo */
+    left: 1rem; 
+    width: 2px;
+    background-color: #e2e8f0; /* Slate-200 */
+    z-index: 0;
+}
+
+/* Ajuste fino para telas maiores (Desktop) onde a bolinha é maior */
+@media (min-width: 768px) {
+    .timeline-line::before {
+        left: 1.25rem; /* 20px */
+    }
+}
+
+/* --- Animações Personalizadas --- */
+@keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+    animation: fadeIn 0.3s ease-out forwards;
+}
+
+/* --- Utilitários de Texto --- */
+/* Garante que textos longos não quebrem o layout */
+.break-word {
+    word-wrap: break-word;
+    word-break: break-word; 
+    overflow-wrap: break-word;
+}
