@@ -33,6 +33,7 @@ const API = {
             const payload = {
                 action: action,
                 token: token,
+                origem: window.location.origin,
                 ...data
             };
 
@@ -190,3 +191,4 @@ const API = {
         download: (fileData) => API.call('downloadArquivo', fileData)
     }
 };
+
