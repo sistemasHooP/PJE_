@@ -239,7 +239,8 @@ const ClienteUI = {
             'ARQUIVADO': 'Processo finalizado.',
             'CANCELADO': 'Processo foi cancelado.'
         };
-        return map[status?.toUpperCase()] || '';
+        const key = status ? String(status).toUpperCase() : '';
+        return map[key] || '';
     },
 
     /**

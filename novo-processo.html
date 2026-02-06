@@ -516,6 +516,12 @@
         let clienteSelecionado = null;
         let clienteVinculado = false;
 
+        function normalizarCPFFrontend(valor) {
+            const digitos = String(valor || '').replace(/\D/g, '');
+            if (!digitos) return '';
+            return digitos.padStart(11, '0').slice(-11);
+        }
+
         // =====================================================================
         // INICIALIZAÇÃO
         // =====================================================================
@@ -618,7 +624,7 @@
 
         async function buscarCliente() {
             const cpfInput = document.getElementById('cpf-busca');
-            const cpf = cpfInput.value.replace(/\D/g, '');
+            const cpf = normalizarCPFFrontend(cpfInput.value);
 
             if (cpf.length !== 11) {
                 Utils.showToast('Digite um CPF válido com 11 dígitos.', 'warning');
@@ -716,8 +722,8 @@
 
         async function cadastrarEAvancar() {
             const nome = document.getElementById('novo-cliente-nome').value.trim();
-            const cpf = document.getElementById('novo-cliente-cpf').value.replace(/\D/g, '');
-            const email = document.getElementById('novo-cliente-email').value.trim();
+            const cpf = normalizarCPFFrontend(document.getElementById('novo-cliente-cpf').value);
+            const email = document.getElementById('novo-cliente-email').value.trim().toLowerCase();
             const telefone = document.getElementById('novo-cliente-telefone').value.replace(/\D/g, '');
 
             // Validações
@@ -733,7 +739,7 @@
                 return;
             }
 
-            if (!email.includes('@')) {
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
                 Utils.showToast('Digite um email válido.', 'warning');
                 document.getElementById('novo-cliente-email').focus();
                 return;
@@ -897,14 +903,17 @@
                     tipo: tipoFinal,
                     parte_nome: parte,
                     data_entrada: dataEntrada,
-                    email_interessado: email,
+                    email_interessado: email.toLowerCase(),
                     descricao: descricao
                 };
 
                 // Se tiver cliente selecionado, adiciona CPF ao payload
                 if (clienteSelecionado && clienteSelecionado.cpf) {
-                    // Garante que o CPF é string e remove formatação
-                    payload.cpf_cliente = String(clienteSelecionado.cpf).replace(/\D/g, '');
+                    // Garante CPF normalizado com 11 dígitos e dados completos do cliente
+                    payload.cpf_cliente = normalizarCPFFrontend(clienteSelecionado.cpf);
+                    payload.nome_cliente = (clienteSelecionado.nome_completo || clienteSelecionado.nome || '').trim();
+                    payload.email_cliente = (clienteSelecionado.email || '').trim().toLowerCase();
+                    payload.telefone_cliente = String(clienteSelecionado.telefone || '').replace(/\D/g, '');
                 }
 
                 const resultado = await API.call('criarProcesso', payload, 'POST', true);

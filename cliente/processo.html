@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Detalhe do Processo - Acompanhamento Processual</title>
+
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen">
+
+    <header class="bg-slate-800 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between gap-3">
+                <button id="btn-voltar" class="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-700 hover:bg-slate-600 transition-colors text-sm font-semibold">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path></svg>
+                    Voltar
+                </button>
+
+                <div class="text-right">
+                    <p class="font-semibold text-sm" data-cliente-nome>Cliente</p>
+                    <p class="text-xs text-slate-300">Detalhe do Processo</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <main class="max-w-4xl mx-auto px-4 py-6 space-y-5">
+        <section id="processo-card" class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm hidden">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h1 class="text-2xl font-bold text-slate-800" id="numero-processo">Processo</h1>
+                <span id="status-processo" class="px-3 py-1 rounded-full text-xs font-bold border"></span>
+            </div>
+
+            <div class="mt-4 grid sm:grid-cols-2 gap-3 text-sm">
+                <p><span class="font-semibold text-slate-700">Tipo:</span> <span id="tipo-processo" class="text-slate-600">-</span></p>
+                <p><span class="font-semibold text-slate-700">Interessado:</span> <span id="parte-processo" class="text-slate-600">-</span></p>
+                <p><span class="font-semibold text-slate-700">Entrada:</span> <span id="entrada-processo" class="text-slate-600">-</span></p>
+                <p><span class="font-semibold text-slate-700">Prazo:</span> <span id="prazo-processo" class="text-slate-600">-</span></p>
+            </div>
+
+            <div class="mt-4 p-4 rounded-xl bg-slate-50 border border-slate-200">
+                <p class="font-semibold text-slate-700 mb-1">Descrição</p>
+                <p id="descricao-processo" class="text-slate-600 text-sm">-</p>
+            </div>
+        </section>
+
+        <section class="bg-white rounded-2xl p-6 border border-slate-100 shadow-sm">
+            <h2 class="text-lg font-bold text-slate-800 mb-4">Andamentos</h2>
+            <div id="movimentacoes-loading" class="text-slate-500 text-sm">Carregando andamento...</div>
+            <div id="movimentacoes-empty" class="hidden text-slate-500 text-sm">Ainda não há movimentações para este processo.</div>
+            <div id="movimentacoes-list" class="space-y-3"></div>
+        </section>
+    </main>
+
+    <script src="js/cliente-config.js?v=1.1.1"></script>
+    <script src="js/cliente-api.js?v=1.1.1"></script>
+    <script src="js/cliente-auth.js?v=1.1.1"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (!ClienteAuth.protectRoute()) return;
+            ClienteAuth.updateClienteUI();
+
+            document.getElementById('btn-voltar').addEventListener('click', function() {
+                ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.PROCESSOS);
+            });
+
+            const params = new URLSearchParams(window.location.search);
+            const idProcesso = params.get('id');
+
+            if (!idProcesso) {
+                ClienteUI.showToast('Processo não informado.', 'warning');
+                ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.PROCESSOS);
+                return;
+            }
+
+            try {
+                const data = await ClienteAPI.getProcesso(idProcesso);
+                renderProcesso(data.processo);
+                renderMovimentacoes(data.movimentacoes || []);
+            } catch (error) {
+                ClienteUI.showToast(error.message || 'Erro ao carregar processo.', 'error');
+                const loadingEl = document.getElementById('movimentacoes-loading');
+                if (loadingEl) {
+                    loadingEl.textContent = 'Não foi possível carregar este processo agora. Toque em Voltar e tente novamente.';
+                }
+            }
+        });
+
+        function renderProcesso(processo) {
+            const card = document.getElementById('processo-card');
+            card.classList.remove('hidden');
+
+            document.getElementById('numero-processo').textContent = 'Processo nº ' + (processo.numero_processo || 'S/N');
+
+            const statusEl = document.getElementById('status-processo');
+            statusEl.textContent = processo.status || 'SEM STATUS';
+            statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold border ' + ClienteUI.getStatusClass(processo.status || '');
+
+            document.getElementById('tipo-processo').textContent = processo.tipo || '-';
+            document.getElementById('parte-processo').textContent = processo.parte_nome || '-';
+            document.getElementById('entrada-processo').textContent = ClienteUI.formatDate(processo.data_entrada);
+            document.getElementById('prazo-processo').textContent = processo.data_prazo ? ClienteUI.formatDate(processo.data_prazo) : '-';
+            document.getElementById('descricao-processo').textContent = processo.descricao || 'Sem descrição.';
+        }
+
+        function renderMovimentacoes(movs) {
+            const loadingEl = document.getElementById('movimentacoes-loading');
+            const emptyEl = document.getElementById('movimentacoes-empty');
+            const listEl = document.getElementById('movimentacoes-list');
+
+            loadingEl.classList.add('hidden');
+
+            if (!movs.length) {
+                emptyEl.classList.remove('hidden');
+                return;
+            }
+
+            listEl.innerHTML = movs.map(function(m) {
+                const data = ClienteUI.formatDate(m.data_movimentacao);
+                const prazo = m.data_prazo ? ClienteUI.formatDate(m.data_prazo) : '';
+                const anexo = m.anexo_link
+                    ? '<a class="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800 text-xs font-semibold mt-2" target="_blank" rel="noopener" href="' + m.anexo_link + '">📎 ' + (m.anexo_nome || 'Ver anexo') + '</a>'
+                    : '';
+
+                return '' +
+                    '<article class="border border-slate-200 rounded-xl p-4 bg-slate-50">' +
+                    '  <div class="flex flex-wrap items-center justify-between gap-2">' +
+                    '    <p class="font-bold text-slate-800 text-sm">' + ClienteUI.escapeHtml(m.tipo || 'Andamento') + '</p>' +
+                    '    <p class="text-xs text-slate-500">' + data + '</p>' +
+                    '  </div>' +
+                    '  <p class="text-sm text-slate-700 mt-2 whitespace-pre-line">' + ClienteUI.escapeHtml(m.descricao || '-') + '</p>' +
+                    (prazo ? '<p class="text-xs text-amber-700 mt-2 font-semibold">Prazo: ' + prazo + '</p>' : '') +
+                    anexo +
+                    '</article>';
+            }).join('');
+        }
+    </script>
+</body>
+</html>

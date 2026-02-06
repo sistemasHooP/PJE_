@@ -1,259 +1,168 @@
 /**
  * ============================================================================
- * ARQUIVO: cliente/js/cliente-api.js
- * DESCRIÇÃO: Camada de comunicação com a API para o módulo Cliente
+ * ARQUIVO: cliente/js/cliente-auth.js
+ * DESCRIÇÃO: Gerenciamento de autenticação/sessão da Área do Cliente
+ * VERSÃO: 1.0
+ * AUTOR: Sistema RPPS Jurídico
  * ============================================================================
  */
 
-const ClienteAPI = {
+const ClienteAuth = {
 
     /**
-     * Função genérica para enviar requisições à API.
+     * Salva CPF temporário entre tela de login e verificação OTP.
+     * @param {string} cpf
      */
-    call: async function(action, data = {}, showLoading = true) {
-        if (showLoading) {
-            ClienteUI.showLoading();
+    saveTempCPF: function(cpf) {
+        const cpfLimpo = String(cpf || '').replace(/\D/g, '');
+        sessionStorage.setItem(CONFIG_CLIENTE.STORAGE_KEYS.CPF_TEMP, cpfLimpo);
+    },
+
+    /**
+     * Recupera CPF temporário.
+     * @returns {string}
+     */
+    getTempCPF: function() {
+        return sessionStorage.getItem(CONFIG_CLIENTE.STORAGE_KEYS.CPF_TEMP) || '';
+    },
+
+    /**
+     * Limpa CPF temporário.
+     */
+    clearTempCPF: function() {
+        sessionStorage.removeItem(CONFIG_CLIENTE.STORAGE_KEYS.CPF_TEMP);
+    },
+
+    /**
+     * Salva sessão do cliente após validar OTP.
+     * @param {{token:string, cliente:Object}} data
+     */
+    saveSession: function(data) {
+        if (!data || !data.token || !data.cliente) {
+            throw new Error('Dados de sessão inválidos.');
         }
+
+        sessionStorage.setItem(CONFIG_CLIENTE.STORAGE_KEYS.TOKEN, data.token);
+        sessionStorage.setItem(CONFIG_CLIENTE.STORAGE_KEYS.CLIENTE_DATA, JSON.stringify({
+            ...data.cliente,
+            login_at: Date.now()
+        }));
+    },
+
+    /**
+     * Retorna cliente da sessão.
+     * @returns {Object|null}
+     */
+    getCliente: function() {
+        const raw = sessionStorage.getItem(CONFIG_CLIENTE.STORAGE_KEYS.CLIENTE_DATA);
+        if (!raw) return null;
 
         try {
-            const token = sessionStorage.getItem(CONFIG_CLIENTE.STORAGE_KEYS.TOKEN);
-            
-            const payload = {
-                action: action,
-                token: token,
-                origem: window.location.origin,
-                ...data
-            };
-
-            const response = await fetch(CONFIG_CLIENTE.API_URL, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'text/plain;charset=utf-8',
-                },
-                body: JSON.stringify(payload),
-                redirect: 'follow'
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erro de rede: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (result.status === 'error') {
-                // Sessão expirada
-                if (result.message && (result.message.includes("Sessão expirada") || result.message.includes("Token"))) {
-                    ClienteAuth.logout();
-                    throw new Error("Sessão expirada. Faça login novamente.");
-                }
-                throw new Error(result.message);
-            }
-
-            return result.data;
-
-        } catch (error) {
-            console.error("API Error:", error);
-            throw error;
-        } finally {
-            if (showLoading) {
-                ClienteUI.hideLoading();
-            }
+            return JSON.parse(raw);
+        } catch (e) {
+            return null;
         }
     },
 
-    // ══════════════════════════════════════════════════════════════════════
-    // AUTENTICAÇÃO
-    // ══════════════════════════════════════════════════════════════════════
-
     /**
-     * Solicita código de acesso via CPF.
+     * Retorna token da sessão.
+     * @returns {string}
      */
-    solicitarCodigo: function(cpf) {
-        return this.call('solicitarCodigoCliente', { cpf: cpf });
+    getToken: function() {
+        return sessionStorage.getItem(CONFIG_CLIENTE.STORAGE_KEYS.TOKEN) || '';
     },
 
     /**
-     * Valida o código digitado.
+     * Verifica se há sessão válida no frontend.
+     * @returns {boolean}
      */
-    validarCodigo: function(cpf, codigo) {
-        return this.call('validarCodigoCliente', { cpf: cpf, codigo: codigo });
+    isAuthenticated: function() {
+        const token = this.getToken();
+        const cliente = this.getCliente();
+
+        if (!token || !cliente) return false;
+
+        // Timeout no front para reduzir sessão antiga inválida
+        const loginAt = Number(cliente.login_at || 0);
+        if (!loginAt) return false;
+
+        if ((Date.now() - loginAt) > CONFIG_CLIENTE.SESSION_TIMEOUT) {
+            this.logout(false);
+            return false;
+        }
+
+        return true;
     },
 
-    // ══════════════════════════════════════════════════════════════════════
-    // PROCESSOS
-    // ══════════════════════════════════════════════════════════════════════
-
     /**
-     * Lista os processos do cliente logado.
+     * Protege páginas internas da área do cliente.
+     * @returns {boolean}
      */
-    getMeusProcessos: function() {
-        return this.call('getMeusProcessos', {});
-    },
+    protectRoute: function() {
+        if (this.isAuthenticated()) {
+            return true;
+        }
 
-    /**
-     * Obtém detalhes de um processo específico.
-     */
-    getProcesso: function(idProcesso) {
-        return this.call('getProcessoCliente', { id_processo: idProcesso });
-    },
-
-    // ══════════════════════════════════════════════════════════════════════
-    // ARQUIVOS
-    // ══════════════════════════════════════════════════════════════════════
-
-    /**
-     * Baixa arquivo via proxy (para visualização).
-     */
-    downloadArquivo: function(fileUrl) {
-        return this.call('downloadArquivo', { fileUrl: fileUrl });
-    }
-};
-
-// ══════════════════════════════════════════════════════════════════════════════
-// UTILITÁRIOS DE UI
-// ══════════════════════════════════════════════════════════════════════════════
-
-const ClienteUI = {
-
-    /**
-     * Exibe tela de carregamento.
-     */
-    showLoading: function(message = "Carregando...") {
-        let loader = document.getElementById('cliente-loader');
-        
-        if (!loader) {
-            loader = document.createElement('div');
-            loader.id = 'cliente-loader';
-            loader.className = 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm';
-            
-            loader.innerHTML = `
-                <div class="flex flex-col items-center p-8">
-                    <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
-                    <p id="loader-message" class="text-white font-medium text-lg">${message}</p>
-                </div>
-            `;
-            document.body.appendChild(loader);
+        this.logout(false);
+        if (typeof ClienteUI !== 'undefined' && ClienteUI.showToast) {
+            ClienteUI.showToast('Faça login para acessar seus processos.', 'warning');
+            setTimeout(() => {
+                ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.LOGIN);
+            }, 800);
         } else {
-            const msgEl = document.getElementById('loader-message');
-            if (msgEl) msgEl.textContent = message;
+            window.location.href = CONFIG_CLIENTE.PAGES.LOGIN;
         }
-        
-        loader.classList.remove('hidden');
+
+        return false;
     },
 
     /**
-     * Esconde tela de carregamento.
+     * Se já estiver logado, evita voltar para a tela de CPF.
      */
-    hideLoading: function() {
-        const loader = document.getElementById('cliente-loader');
-        if (loader) {
-            loader.classList.add('hidden');
+    redirectIfAuthenticated: function() {
+        if (this.isAuthenticated()) {
+            if (typeof ClienteUI !== 'undefined' && ClienteUI.navigateTo) {
+                ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.PROCESSOS);
+            } else {
+                window.location.href = CONFIG_CLIENTE.PAGES.PROCESSOS;
+            }
         }
     },
 
     /**
-     * Exibe toast de notificação.
+     * Atualiza cabeçalho com dados do cliente.
      */
-    showToast: function(message, type = 'info') {
-        let container = document.getElementById('toast-container');
-        if (!container) {
-            container = document.createElement('div');
-            container.id = 'toast-container';
-            container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4';
-            document.body.appendChild(container);
-        }
+    updateClienteUI: function() {
+        const cliente = this.getCliente();
+        if (!cliente) return;
 
-        const colors = {
-            success: 'bg-green-600',
-            error: 'bg-red-600',
-            warning: 'bg-amber-500',
-            info: 'bg-blue-600'
-        };
+        const nome = String(cliente.nome || 'Cliente').trim();
+        const iniciais = nome ? nome.charAt(0).toUpperCase() : 'C';
 
-        const icons = {
-            success: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
-            error: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
-            warning: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
-            info: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
-        };
-
-        const toast = document.createElement('div');
-        toast.className = `flex items-center gap-3 w-full p-4 rounded-lg shadow-xl text-white transform transition-all duration-300 translate-x-full ${colors[type] || colors.info}`;
-        toast.innerHTML = `
-            ${icons[type] || icons.info}
-            <span class="flex-1 font-medium">${message}</span>
-        `;
-
-        container.appendChild(toast);
-        
-        // Anima entrada
-        requestAnimationFrame(() => {
-            toast.classList.remove('translate-x-full');
+        document.querySelectorAll('[data-cliente-nome]').forEach(el => {
+            el.textContent = nome;
         });
 
-        // Remove após 4 segundos
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-x-full');
-            setTimeout(() => toast.remove(), 300);
-        }, 4000);
+        document.querySelectorAll('[data-cliente-iniciais]').forEach(el => {
+            el.textContent = iniciais;
+        });
     },
 
     /**
-     * Formata data para exibição.
+     * Encerra sessão do cliente.
+     * @param {boolean} redirect
      */
-    formatDate: function(dateInput) {
-        if (!dateInput) return '-';
-        const date = new Date(dateInput);
-        if (isNaN(date.getTime())) return dateInput;
-        
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        
-        return `${day}/${month}/${year}`;
-    },
+    logout: function(redirect = true) {
+        sessionStorage.removeItem(CONFIG_CLIENTE.STORAGE_KEYS.TOKEN);
+        sessionStorage.removeItem(CONFIG_CLIENTE.STORAGE_KEYS.CLIENTE_DATA);
+        sessionStorage.removeItem(CONFIG_CLIENTE.STORAGE_KEYS.CPF_TEMP);
 
-    /**
-     * Retorna classe CSS baseada no status.
-     */
-    getStatusClass: function(status) {
-        if (!status) return 'bg-slate-100 text-slate-800';
-        switch (status.toUpperCase()) {
-            case 'EM ANDAMENTO': return 'bg-blue-100 text-blue-800 border-blue-200';
-            case 'JULGADO': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
-            case 'ARQUIVADO': return 'bg-slate-100 text-slate-600 border-slate-200';
-            case 'SOBRESTADO': return 'bg-amber-100 text-amber-800 border-amber-200';
-            case 'CANCELADO': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-slate-100 text-slate-800';
+        if (redirect) {
+            if (typeof ClienteUI !== 'undefined' && ClienteUI.navigateTo) {
+                ClienteUI.navigateTo(CONFIG_CLIENTE.PAGES.LOGIN);
+            } else {
+                window.location.href = CONFIG_CLIENTE.PAGES.LOGIN;
+            }
         }
-    },
-
-    /**
-     * Retorna descrição do status.
-     */
-    getStatusDescription: function(status) {
-        const map = {
-            'EM ANDAMENTO': 'Seu processo está sendo analisado.',
-            'JULGADO': 'Decisão final foi proferida.',
-            'SOBRESTADO': 'Aguardando decisão externa.',
-            'ARQUIVADO': 'Processo finalizado.',
-            'CANCELADO': 'Processo foi cancelado.'
-        };
-        return map[status?.toUpperCase()] || '';
-    },
-
-    /**
-     * Navega para outra página.
-     */
-    navigateTo: function(page) {
-        window.location.href = page;
-    },
-
-    /**
-     * Escapa HTML para prevenir XSS.
-     */
-    escapeHtml: function(text) {
-        if (!text) return '';
-        return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
 };

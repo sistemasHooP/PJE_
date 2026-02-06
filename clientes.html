@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes - Sistema Jurídico RPPS</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="css/style.css">
+    <style>body { font-family: 'Inter', sans-serif; }</style>
+</head>
+<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
+<nav class="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
+    <span class="font-bold text-lg">RPPS Jurídico</span>
+</nav>
+<div class="flex h-screen overflow-hidden">
+    <aside class="hidden md:flex flex-col w-64 bg-slate-800 text-white h-full shrink-0">
+        <div class="p-6 border-b border-slate-700"><h1 class="text-2xl font-bold">RPPS</h1><p class="text-xs text-slate-400">Jurídico v1.0</p></div>
+        <div class="p-6 border-b border-slate-700 bg-slate-900/50">
+            <div class="flex items-center gap-3"><div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg"><span id="user-initials">U</span></div><div><p class="text-sm font-semibold truncate w-32" id="user-name-display">Carregando...</p><p class="text-xs text-blue-300 uppercase tracking-wider" id="user-profile-display">...</p></div></div>
+        </div>
+        <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+            <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">Dashboard</a>
+            <a href="processos.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">Processos</a>
+            <a href="clientes.html" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white">Clientes</a>
+            <a href="novo-processo.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 rounded-lg">Novo Processo</a>
+        </nav>
+        <div class="p-4 border-t border-slate-700"><button id="desktop-logout-btn" class="w-full text-left px-4 py-3 text-slate-300 hover:bg-red-600 hover:text-white rounded-lg">Sair</button></div>
+    </aside>
+
+    <main class="flex-1 overflow-y-auto p-4 md:p-8">
+        <div class="max-w-7xl mx-auto">
+            <div class="flex flex-col md:flex-row gap-3 md:items-center md:justify-between mb-6">
+                <h1 class="text-2xl font-bold text-slate-800">Clientes</h1>
+                <input id="busca-cliente" type="text" placeholder="Buscar por nome, CPF ou email" class="w-full md:w-96 px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full">
+                        <thead class="bg-slate-50 text-slate-600 text-sm">
+                            <tr>
+                                <th class="text-left px-4 py-3">Nome</th>
+                                <th class="text-left px-4 py-3">CPF</th>
+                                <th class="text-left px-4 py-3">Email</th>
+                                <th class="text-left px-4 py-3">Telefone</th>
+                                <th class="text-left px-4 py-3">Status</th>
+                            </tr>
+                        </thead>
+                        <tbody id="clientes-tbody" class="text-sm"></tbody>
+                    </table>
+                </div>
+                <div id="clientes-empty" class="hidden p-8 text-center text-slate-500">Nenhum cliente encontrado.</div>
+            </div>
+        </div>
+    </main>
+</div>
+
+<nav class="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 z-40 grid grid-cols-4 h-16">
+    <a href="dashboard.html" class="flex flex-col items-center justify-center text-slate-500 text-xs">Dashboard</a>
+    <a href="processos.html" class="flex flex-col items-center justify-center text-slate-500 text-xs">Processos</a>
+    <a href="clientes.html" class="flex flex-col items-center justify-center text-blue-600 text-xs font-semibold">Clientes</a>
+    <a href="novo-processo.html" class="flex flex-col items-center justify-center text-slate-500 text-xs">Novo</a>
+</nav>
+
+<script src="js/config.js"></script>
+<script src="js/utils.js"></script>
+<script src="js/api.js"></script>
+<script src="js/auth.js"></script>
+<script src="js/clientes.js"></script>
+</body>
+</html>

@@ -179,6 +179,13 @@ const API = {
         criar: (dadosProcesso) => API.call('criarProcesso', dadosProcesso),
     },
 
+
+    clientes: {
+        listar: () => API.call('listarClientes', {}),
+        cadastrar: (dadosCliente) => API.call('cadastrarCliente', dadosCliente),
+        atualizar: (dadosCliente) => API.call('atualizarCliente', dadosCliente)
+    },
+
     movimentacoes: {
         nova: (dadosMov) => API.call('novaMovimentacao', dadosMov)
     },
