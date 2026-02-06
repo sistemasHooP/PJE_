@@ -1,108 +1,385 @@
 /**
  * ============================================================================
  * ARQUIVO: cliente/js/cliente-api.js
- * DESCRIÇÃO: Cliente HTTP para comunicação com o Backend (Google Apps Script).
- * VERSÃO: 2.1 - Com suporte a arquivos (Proxy)
+ * DESCRIÇÃO: Camada de comunicação com a API para o módulo Cliente
+ * VERSÃO: 1.1 - Com suporte a download de arquivos via proxy
  * ============================================================================
  */
 
 const ClienteAPI = {
-    
-    /**
-     * Helper genérico para requisições POST
-     */
-    request: async (payload) => {
-        try {
-            // Adiciona timestamp para evitar cache
-            payload._t = new Date().getTime();
 
-            const response = await fetch(CONFIG.API_URL, {
+    /**
+     * Função genérica para enviar requisições à API.
+     */
+    call: async function(action, data = {}, showLoading = true) {
+        if (showLoading) {
+            ClienteUI.showLoading();
+        }
+
+        try {
+            const token = sessionStorage.getItem(CONFIG_CLIENTE.STORAGE_KEYS.TOKEN);
+            
+            const payload = {
+                action: action,
+                token: token,
+                origem: window.location.origin,
+                ...data
+            };
+
+            const response = await fetch(CONFIG_CLIENTE.API_URL, {
                 method: 'POST',
-                mode: 'text/plain', // Importante para evitar preflight OPTIONS no GAS
-                body: JSON.stringify(payload)
+                headers: {
+                    'Content-Type': 'text/plain;charset=utf-8',
+                },
+                body: JSON.stringify(payload),
+                redirect: 'follow'
             });
 
-            const text = await response.text();
-            
-            try {
-                const json = JSON.parse(text);
-                
-                if (json.status === 'error') {
-                    throw new Error(json.message || 'Erro no servidor');
-                }
-                
-                return json.data;
-
-            } catch (jsonError) {
-                console.error('Erro de Parse JSON:', text);
-                throw new Error('Resposta inválida do servidor.');
+            if (!response.ok) {
+                throw new Error(`Erro de rede: ${response.status}`);
             }
 
+            const result = await response.json();
+
+            if (result.status === 'error') {
+                // Sessão expirada
+                if (result.message && (result.message.includes("Sessão expirada") || result.message.includes("Token"))) {
+                    ClienteAuth.logout();
+                    throw new Error("Sessão expirada. Faça login novamente.");
+                }
+                throw new Error(result.message);
+            }
+
+            return result.data;
+
         } catch (error) {
-            console.error('Erro na API:', error);
+            console.error("API Error:", error);
             throw error;
+        } finally {
+            if (showLoading) {
+                ClienteUI.hideLoading();
+            }
+        }
+    },
+
+    // ══════════════════════════════════════════════════════════════════════
+    // AUTENTICAÇÃO
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Solicita código de acesso via CPF.
+     */
+    solicitarCodigo: function(cpf) {
+        return this.call('solicitarCodigoCliente', { cpf: cpf });
+    },
+
+    /**
+     * Valida o código digitado.
+     */
+    validarCodigo: function(cpf, codigo) {
+        return this.call('validarCodigoCliente', { cpf: cpf, codigo: codigo });
+    },
+
+    // ══════════════════════════════════════════════════════════════════════
+    // PROCESSOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Lista os processos do cliente logado.
+     */
+    getMeusProcessos: function() {
+        return this.call('getMeusProcessos', {});
+    },
+
+    /**
+     * Obtém detalhes de um processo específico.
+     */
+    getProcesso: function(idProcesso) {
+        return this.call('getProcessoCliente', { id_processo: idProcesso });
+    },
+
+    // ══════════════════════════════════════════════════════════════════════
+    // ARQUIVOS
+    // ══════════════════════════════════════════════════════════════════════
+
+    /**
+     * Baixa arquivo via proxy (para visualização sem login no Google).
+     * O backend baixa o arquivo do Drive e retorna em Base64.
+     * 
+     * @param {string} fileUrl - URL ou ID do arquivo no Google Drive
+     * @returns {Promise<{base64: string, mimeType: string, nome: string}>}
+     */
+    downloadArquivo: function(fileUrl) {
+        return this.call('downloadArquivoCliente', { fileUrl: fileUrl }, true);
+    }
+};
+
+// ══════════════════════════════════════════════════════════════════════════════
+// UTILITÁRIOS DE UI
+// ══════════════════════════════════════════════════════════════════════════════
+
+const ClienteUI = {
+
+    /**
+     * Exibe tela de carregamento.
+     */
+    showLoading: function(message = "Carregando...") {
+        let loader = document.getElementById('cliente-loader');
+        
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'cliente-loader';
+            loader.className = 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm';
+            
+            loader.innerHTML = `
+                <div class="flex flex-col items-center p-8">
+                    <div class="animate-spin rounded-full h-12 w-12 border-t-4 border-b-4 border-blue-500 mb-4"></div>
+                    <p id="loader-message" class="text-white font-medium text-lg">${message}</p>
+                </div>
+            `;
+            document.body.appendChild(loader);
+        } else {
+            const msgEl = document.getElementById('loader-message');
+            if (msgEl) msgEl.textContent = message;
+        }
+        
+        loader.classList.remove('hidden');
+    },
+
+    /**
+     * Esconde tela de carregamento.
+     */
+    hideLoading: function() {
+        const loader = document.getElementById('cliente-loader');
+        if (loader) {
+            loader.classList.add('hidden');
         }
     },
 
     /**
-     * Solicita código de acesso (Login passo 1)
+     * Exibe toast de notificação.
      */
-    solicitarCodigo: async (cpf) => {
-        return ClienteAPI.request({
-            action: 'solicitarCodigoCliente',
-            cpf: cpf
+    showToast: function(message, type = 'info') {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4';
+            document.body.appendChild(container);
+        }
+
+        const colors = {
+            success: 'bg-green-600',
+            error: 'bg-red-600',
+            warning: 'bg-amber-500',
+            info: 'bg-blue-600'
+        };
+
+        const icons = {
+            success: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>',
+            error: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>',
+            warning: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>',
+            info: '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `flex items-center gap-3 w-full p-4 rounded-lg shadow-xl text-white transform transition-all duration-300 translate-x-full ${colors[type] || colors.info}`;
+        toast.innerHTML = `
+            ${icons[type] || icons.info}
+            <span class="flex-1 font-medium">${message}</span>
+        `;
+
+        container.appendChild(toast);
+        
+        // Anima entrada
+        requestAnimationFrame(() => {
+            toast.classList.remove('translate-x-full');
         });
+
+        // Remove após 4 segundos
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-x-full');
+            setTimeout(() => toast.remove(), 300);
+        }, 4000);
     },
 
     /**
-     * Valida código e retorna token (Login passo 2)
+     * Formata data para exibição.
      */
-    validarCodigo: async (cpf, codigo) => {
-        return ClienteAPI.request({
-            action: 'loginCliente',
-            cpf: cpf,
-            codigo: codigo
-        });
+    formatDate: function(dateInput) {
+        if (!dateInput) return '-';
+        const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return dateInput;
+        
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        
+        return `${day}/${month}/${year}`;
     },
 
     /**
-     * Busca os processos do cliente logado
+     * Retorna classe CSS baseada no status.
      */
-    getMeusProcessos: async (token) => {
-        return ClienteAPI.request({
-            action: 'getMeusProcessos',
-            token: token
-        });
+    getStatusClass: function(status) {
+        if (!status) return 'bg-slate-100 text-slate-800';
+        switch (status.toUpperCase()) {
+            case 'EM ANDAMENTO': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'JULGADO': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'ARQUIVADO': return 'bg-slate-100 text-slate-600 border-slate-200';
+            case 'SOBRESTADO': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'CANCELADO': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-slate-100 text-slate-800';
+        }
     },
 
     /**
-     * Busca detalhes de um processo específico
+     * Retorna descrição do status.
      */
-    getDetalhesProcesso: async (token, idProcesso) => {
-        return ClienteAPI.request({
-            action: 'getProcessoCliente',
-            token: token,
-            idProcesso: idProcesso
-        });
+    getStatusDescription: function(status) {
+        const map = {
+            'EM ANDAMENTO': 'Seu processo está sendo analisado.',
+            'JULGADO': 'Decisão final foi proferida.',
+            'SOBRESTADO': 'Aguardando decisão externa.',
+            'ARQUIVADO': 'Processo finalizado.',
+            'CANCELADO': 'Processo foi cancelado.'
+        };
+        return map[status?.toUpperCase()] || '';
     },
 
     /**
-     * [NOVO] Lista arquivos de uma pasta do Drive (Proxy)
+     * Navega para outra página.
      */
-    listarArquivos: async (pastaId) => {
-        return ClienteAPI.request({
-            action: 'listarArquivosDaPasta',
-            pastaId: pastaId
-        });
+    navigateTo: function(page) {
+        window.location.href = page;
     },
 
     /**
-     * [NOVO] Baixa o conteúdo do arquivo em Base64 para visualização
+     * Escapa HTML para prevenir XSS.
      */
-    baixarArquivo: async (idArquivo) => {
-        return ClienteAPI.request({
-            action: 'downloadArquivo',
-            idArquivo: idArquivo
+    escapeHtml: function(text) {
+        if (!text) return '';
+        return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
+    },
+
+    /**
+     * Abre arquivo em um modal de visualização.
+     * Baixa o arquivo via proxy e exibe em Base64.
+     * 
+     * @param {string} fileUrl - URL do arquivo no Drive
+     * @param {string} fileName - Nome do arquivo para exibir
+     */
+    viewFile: async function(fileUrl, fileName) {
+        if (!fileUrl) {
+            this.showToast('URL do arquivo não fornecida.', 'error');
+            return;
+        }
+
+        // Mostra loading
+        this.showLoading('Carregando arquivo...');
+
+        try {
+            // Baixa o arquivo via API (proxy)
+            const data = await ClienteAPI.downloadArquivo(fileUrl);
+
+            if (!data || !data.base64) {
+                throw new Error('Dados do arquivo não recebidos.');
+            }
+
+            // Cria URL blob para visualização
+            const byteCharacters = atob(data.base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: data.mimeType });
+            const blobUrl = URL.createObjectURL(blob);
+
+            this.hideLoading();
+
+            // Decide como exibir baseado no tipo
+            if (data.mimeType.includes('pdf')) {
+                // PDF: Abre em nova aba
+                window.open(blobUrl, '_blank');
+            } else if (data.mimeType.includes('image')) {
+                // Imagem: Mostra em modal
+                this._showImageModal(blobUrl, fileName || data.nome);
+            } else {
+                // Outros: Força download
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = fileName || data.nome || 'arquivo';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                this.showToast('Download iniciado!', 'success');
+            }
+
+        } catch (error) {
+            this.hideLoading();
+            console.error('Erro ao visualizar arquivo:', error);
+            this.showToast(error.message || 'Erro ao carregar arquivo.', 'error');
+        }
+    },
+
+    /**
+     * Mostra modal com imagem.
+     * @private
+     */
+    _showImageModal: function(imageUrl, title) {
+        // Remove modal existente se houver
+        const existingModal = document.getElementById('image-modal');
+        if (existingModal) existingModal.remove();
+
+        // Cria o modal
+        const modal = document.createElement('div');
+        modal.id = 'image-modal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4';
+        modal.innerHTML = `
+            <div class="relative max-w-4xl w-full">
+                <!-- Botão Fechar -->
+                <button id="close-image-modal" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                
+                <!-- Título -->
+                <p class="text-white text-center mb-4 font-medium truncate">${this.escapeHtml(title)}</p>
+                
+                <!-- Imagem -->
+                <img src="${imageUrl}" alt="${this.escapeHtml(title)}" class="max-w-full max-h-[80vh] mx-auto rounded-lg shadow-2xl">
+                
+                <!-- Botão Download -->
+                <div class="text-center mt-4">
+                    <a href="${imageUrl}" download="${this.escapeHtml(title)}" 
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Baixar Imagem
+                    </a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Eventos para fechar
+        document.getElementById('close-image-modal').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
         });
+
+        // ESC para fechar
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
     }
 };

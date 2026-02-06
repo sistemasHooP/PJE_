@@ -1,717 +1,295 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="pt-br">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Detalhes do Processo - Portal do Cliente</title>
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    <!-- Font Awesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <title>Detalhes do Processo - Acompanhamento Processual</title>
     
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
     <style>
-        :root {
-            --primary-color: #2c3e50;
-            --secondary-color: #3498db;
-            --accent-color: #e74c3c;
-            --background-color: #f8f9fa;
-            --card-color: #ffffff;
-            --text-color: #333333;
-            --border-color: #e9ecef;
-            --success-color: #27ae60;
-            --warning-color: #f39c12;
-        }
-
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: var(--background-color);
-            margin: 0;
-            padding: 0;
-            color: var(--text-color);
-            min-height: 100vh;
-        }
-
-        /* --- Navbar --- */
-        .navbar {
-            background-color: var(--primary-color);
-            color: white;
-            padding: 1rem 2rem;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-        }
-
-        .navbar-brand {
-            font-size: 1.2rem;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            color: white;
-            text-decoration: none;
-        }
-
-        .btn-logout {
-            background: rgba(255,255,255,0.1);
-            border: 1px solid rgba(255,255,255,0.2);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 6px;
-            cursor: pointer;
-            transition: all 0.2s;
-            font-size: 0.9rem;
-        }
-
-        .btn-logout:hover {
-            background: rgba(255,255,255,0.2);
-        }
-
-        /* --- Container Principal --- */
-        .container {
-            max-width: 1000px;
-            margin: 2rem auto;
-            padding: 0 1rem;
-        }
-
-        .back-link {
-            display: inline-flex;
-            align-items: center;
-            gap: 8px;
-            color: var(--secondary-color);
-            text-decoration: none;
-            margin-bottom: 1.5rem;
-            font-weight: 500;
-        }
-
-        .back-link:hover {
-            text-decoration: underline;
-        }
-
-        /* --- Cards --- */
-        .card {
-            background: var(--card-color);
-            border-radius: 12px;
-            box-shadow: 0 2px 12px rgba(0,0,0,0.05);
-            padding: 2rem;
-            margin-bottom: 2rem;
-            border: 1px solid var(--border-color);
-        }
-
-        .card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: flex-start;
-            margin-bottom: 1.5rem;
-            padding-bottom: 1rem;
-            border-bottom: 1px solid var(--border-color);
-            flex-wrap: wrap;
-            gap: 1rem;
-        }
-
-        .process-title h1 {
-            margin: 0;
-            font-size: 1.5rem;
-            color: var(--primary-color);
-        }
-
-        .process-subtitle {
-            color: #7f8c8d;
-            margin-top: 5px;
-            font-size: 0.95rem;
-        }
-
-        .status-badge {
-            padding: 6px 16px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            text-transform: uppercase;
-        }
-
-        .status-andamento { background-color: #e3f2fd; color: #1976d2; }
-        .status-arquivado { background-color: #ffebee; color: #c62828; }
-        .status-sobrestado { background-color: #fff3e0; color: #ef6c00; }
-
-        /* --- Grid de Informações --- */
-        .info-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-            gap: 1.5rem;
-        }
-
-        .info-item label {
-            display: block;
-            color: #7f8c8d;
-            font-size: 0.8rem;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-bottom: 5px;
-        }
-
-        .info-item p {
-            margin: 0;
-            font-weight: 500;
-            color: var(--primary-color);
-            font-size: 1rem;
-        }
-
-        /* --- Seção de Arquivos (NOVO) --- */
-        .files-section {
-            margin-top: 2rem;
-        }
-
-        .section-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: var(--primary-color);
-            margin-bottom: 1rem;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
-        .files-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
-            gap: 1rem;
-        }
-
-        .file-card {
-            background: #f8f9fa;
-            border: 1px solid var(--border-color);
-            border-radius: 8px;
-            padding: 1rem;
-            text-align: center;
-            cursor: pointer;
-            transition: all 0.2s;
-            position: relative;
-        }
-
-        .file-card:hover {
-            border-color: var(--secondary-color);
-            background: #fff;
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
-        }
-
-        .file-icon {
-            font-size: 2.5rem;
-            margin-bottom: 0.8rem;
-            color: #7f8c8d;
-        }
-
-        .file-icon.fa-file-pdf { color: #e74c3c; }
-        .file-icon.fa-file-word { color: #2980b9; }
-        .file-icon.fa-file-image { color: #27ae60; }
-        .file-icon.fa-file-excel { color: #217346; }
-
-        .file-name {
-            font-size: 0.8rem;
-            color: var(--text-color);
-            overflow: hidden;
-            text-overflow: ellipsis;
-            display: -webkit-box;
-            -webkit-line-clamp: 2;
-            -webkit-box-orient: vertical;
-            line-height: 1.3;
-        }
-
-        .file-date {
-            font-size: 0.7rem;
-            color: #95a5a6;
-            margin-top: 5px;
-        }
-
-        /* --- Timeline de Movimentações --- */
-        .timeline {
-            position: relative;
-            padding-left: 2rem;
-            margin-top: 1rem;
-        }
-
-        .timeline::before {
+        body { font-family: 'Inter', sans-serif; }
+        
+        .timeline-line::before {
             content: '';
             position: absolute;
-            left: 7px;
             top: 0;
             bottom: 0;
+            left: 20px;
             width: 2px;
-            background: #e9ecef;
+            background-color: #e2e8f0;
+            z-index: 0;
         }
 
-        .timeline-item {
-            position: relative;
-            padding-bottom: 2rem;
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
-
-        .timeline-item:last-child {
-            padding-bottom: 0;
-        }
-
-        .timeline-dot {
-            position: absolute;
-            left: -2.35rem;
-            top: 0;
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            background: var(--secondary-color);
-            border: 4px solid #fff;
-            box-shadow: 0 0 0 1px var(--secondary-color);
-        }
-
-        .timeline-date {
-            font-size: 0.85rem;
-            color: #7f8c8d;
-            margin-bottom: 5px;
-        }
-
-        .timeline-content {
-            background: #f8f9fa;
-            padding: 1rem;
-            border-radius: 8px;
-            border: 1px solid var(--border-color);
-        }
-
-        .timeline-title {
-            font-weight: 600;
-            color: var(--primary-color);
-            margin-bottom: 5px;
-        }
-
-        .timeline-desc {
-            font-size: 0.95rem;
-            color: #555;
-            line-height: 1.5;
-        }
-
-        /* --- Modal de Visualização (NOVO) --- */
-        .modal-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0,0,0,0.8);
-            display: none;
-            justify-content: center;
-            align-items: center;
-            z-index: 1000;
-            padding: 20px;
-        }
-
-        .modal-container {
-            background: white;
-            width: 100%;
-            max-width: 900px;
-            height: 85vh;
-            border-radius: 8px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.5);
-        }
-
-        .modal-header {
-            padding: 15px 20px;
-            border-bottom: 1px solid #eee;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-        }
-
-        .modal-title {
-            font-weight: 600;
-            color: var(--primary-color);
-        }
-
-        .btn-close-modal {
-            background: none;
-            border: none;
-            font-size: 1.5rem;
-            cursor: pointer;
-            color: #7f8c8d;
-        }
-
-        .modal-body {
-            flex: 1;
-            background: #f1f1f1;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-            position: relative;
-        }
-
-        .preview-content {
-            max-width: 100%;
-            max-height: 100%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.1);
-        }
-
-        .iframe-preview {
-            width: 100%;
-            height: 100%;
-            border: none;
-        }
-
-        .loader-modal {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            display: none;
-        }
-
-        /* --- Loaders --- */
-        .loading {
-            text-align: center;
-            padding: 3rem;
-            color: #7f8c8d;
-        }
-
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid var(--secondary-color);
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 1rem;
-        }
-
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-
-        .error-msg {
-            text-align: center;
-            padding: 2rem;
-            color: var(--accent-color);
-            background: #fff5f5;
-            border-radius: 8px;
-            border: 1px solid #feb2b2;
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
         }
     </style>
 </head>
-<body>
+<body class="bg-slate-100 min-h-screen">
 
-    <nav class="navbar">
-        <a href="processos.html" class="navbar-brand">
-            <i class="fas fa-balance-scale"></i> Portal Jurídico
-        </a>
-        <button onclick="fazerLogout()" class="btn-logout">
-            <i class="fas fa-sign-out-alt"></i> Sair
-        </button>
-    </nav>
+    <header class="bg-slate-800 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <a href="processos.html" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="text-sm font-medium">Voltar</span>
+                </a>
+                
+                <button id="btn-logout" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="Sair">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
+                </button>
+            </div>
+        </div>
+    </header>
 
-    <div class="container">
-        <a href="processos.html" class="back-link">
-            <i class="fas fa-arrow-left"></i> Voltar para meus processos
-        </a>
-
-        <div id="loading-container" class="loading">
-            <div class="spinner"></div>
-            <p>Carregando detalhes do processo...</p>
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        
+        <div id="loading-state" class="bg-white rounded-2xl p-8 text-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-slate-500">Carregando detalhes do processo...</p>
         </div>
 
-        <div id="error-container" class="error-msg" style="display: none;"></div>
-
-        <div id="content-container" style="display: none;">
+        <div id="processo-content" class="hidden">
             
-            <!-- Detalhes Principais -->
-            <div class="card">
-                <div class="card-header">
-                    <div class="process-title">
-                        <h1 id="numero-processo">...</h1>
-                        <p class="process-subtitle" id="tipo-acao">...</p>
-                    </div>
-                    <span id="status-badge" class="status-badge">...</span>
-                </div>
-
-                <div class="info-grid">
-                    <div class="info-item">
-                        <label>Requerente</label>
-                        <p id="nome-parte">...</p>
-                    </div>
-                    <div class="info-item">
-                        <label>CPF</label>
-                        <p id="cpf-parte">...</p>
-                    </div>
-                    <div class="info-item">
-                        <label>Data de Abertura</label>
-                        <p id="data-abertura">...</p>
-                    </div>
-                    <div class="info-item">
-                        <label>Última Movimentação</label>
-                        <p id="data-atualizacao">...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- SEÇÃO DE ARQUIVOS (NOVO) -->
-            <div class="card">
-                <div class="section-title">
-                    <i class="fas fa-folder-open"></i> Anexos e Documentos
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div class="flex items-center gap-2 mb-3">
+                    <span id="proc-status" class="px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 text-slate-600">
+                        CARREGANDO
+                    </span>
+                    <span id="proc-data" class="text-xs text-slate-400">--/--/----</span>
                 </div>
                 
-                <div id="files-loader" class="loading" style="padding: 1rem; display: none;">
-                    <div class="spinner" style="width: 20px; height: 20px;"></div>
-                </div>
-
-                <div id="files-grid" class="files-grid">
-                    <!-- Arquivos serão inseridos aqui via JS -->
+                <h1 id="proc-numero" class="text-2xl font-bold text-slate-800 mb-2">Processo nº ...</h1>
+                <p id="proc-tipo" class="text-slate-600 font-medium mb-1">...</p>
+                <p id="proc-parte" class="text-slate-500 text-sm">Parte: ...</p>
+                
+                <div id="proc-prazo-container" class="hidden mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-semibold text-amber-800">Prazo:</span>
+                        <span id="proc-prazo" class="text-amber-700"></span>
+                    </div>
                 </div>
                 
-                <div id="files-empty" style="text-align: center; color: #95a5a6; padding: 1rem; display: none;">
-                    <i class="far fa-folder-open" style="font-size: 2rem; margin-bottom: 10px;"></i>
-                    <p>Nenhum documento anexado a este processo ainda.</p>
+                <div id="proc-descricao-container" class="hidden mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p class="text-xs text-slate-500 font-semibold mb-1">Observações:</p>
+                    <p id="proc-descricao" class="text-sm text-slate-700"></p>
                 </div>
+
+                <a id="btn-drive" href="#" target="_blank" class="hidden mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                    </svg>
+                    Ver Pasta de Arquivos
+                </a>
             </div>
 
-            <!-- Timeline -->
-            <div class="card">
-                <div class="section-title">
-                    <i class="fas fa-history"></i> Histórico de Movimentações
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Histórico de Movimentações
+                </h2>
+                
+                <div id="timeline-container" class="relative timeline-line space-y-6 pl-12">
                 </div>
-                <div id="timeline-container" class="timeline">
-                    <!-- Movimentações inseridas via JS -->
-                </div>
-                <div id="timeline-empty" style="text-align: center; color: #95a5a6; display: none;">
-                    Nenhuma movimentação registrada.
+                
+                <div id="empty-movimentacoes" class="hidden text-center py-8 text-slate-400">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p>Nenhuma movimentação registrada ainda.</p>
                 </div>
             </div>
 
         </div>
-    </div>
 
-    <!-- MODAL DE VISUALIZAÇÃO DE ARQUIVO -->
-    <div id="file-modal" class="modal-overlay">
-        <div class="modal-container">
-            <div class="modal-header">
-                <span class="modal-title" id="modal-filename">Documento</span>
-                <button class="btn-close-modal" onclick="fecharModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <div id="modal-loader" class="loader-modal">
-                    <div class="spinner"></div>
-                    <p style="color: #666;">Baixando documento...</p>
-                </div>
-                <!-- Conteúdo (Img ou Iframe) será injetado aqui -->
-                <div id="modal-content" style="width: 100%; height: 100%; display: flex; justify-content: center; align-items: center;"></div>
-            </div>
-        </div>
-    </div>
+    </main>
 
-    <!-- Scripts -->
-    <script src="js/cliente-config.js"></script>
-    <script src="js/cliente-api.js"></script>
-    <script src="js/cliente-auth.js"></script>
+<script src="js/cliente-config.js?v=1.2.0"></script>
+<script src="js/cliente-api.js?v=1.2.0"></script>
+<script src="js/cliente-auth.js?v=1.2.0"></script>
 
     <script>
-        // Inicialização
-        document.addEventListener('DOMContentLoaded', async () => {
-            if (!ClienteAuth.checkAuth()) return;
+        document.addEventListener('DOMContentLoaded', function() {
+            
+            if (!ClienteAuth.protectRoute()) return;
 
-            // Pega o ID do processo da URL (query string: ?id=XYZ)
-            const urlParams = new URLSearchParams(window.location.search);
-            const idProcesso = urlParams.get('id');
+            document.getElementById('btn-logout').addEventListener('click', function() {
+                if (confirm('Deseja sair do sistema?')) {
+                    ClienteAuth.logout();
+                }
+            });
 
-            if (!idProcesso) {
+            const params = new URLSearchParams(window.location.search);
+            const processoId = params.get('id');
+
+            if (!processoId) {
                 alert('Processo não identificado.');
                 window.location.href = 'processos.html';
                 return;
             }
 
-            carregarDetalhes(idProcesso);
+            loadProcessoDetalhes(processoId);
         });
 
-        async function carregarDetalhes(id) {
-            try {
-                const token = ClienteAuth.getToken();
-                const dados = await ClienteAPI.getDetalhesProcesso(token, id);
+        async function loadProcessoDetalhes(id) {
+            const loadingState = document.getElementById('loading-state');
+            const processoContent = document.getElementById('processo-content');
 
-                renderizarDetalhes(dados.processo);
-                renderizarMovimentacoes(dados.movimentacoes);
-                
-                // Se tiver ID da pasta, carrega os arquivos
-                if (dados.processo.pasta_id) {
-                    carregarArquivos(dados.processo.pasta_id);
-                } else {
-                    document.getElementById('files-empty').style.display = 'block';
+            try {
+                const data = await ClienteAPI.getProcesso(id);
+
+                if (!data || !data.processo) {
+                    throw new Error('Dados do processo não encontrados.');
                 }
 
-                document.getElementById('loading-container').style.display = 'none';
-                document.getElementById('content-container').style.display = 'block';
+                const p = data.processo;
+                const movs = data.movimentacoes || [];
 
-            } catch (erro) {
-                document.getElementById('loading-container').style.display = 'none';
-                document.getElementById('error-container').innerText = erro.message;
-                document.getElementById('error-container').style.display = 'block';
+                loadingState.classList.add('hidden');
+                processoContent.classList.remove('hidden');
+
+                document.getElementById('proc-numero').textContent = 'Processo nº ' + (p.numero_processo || 'S/N');
+                document.getElementById('proc-tipo').textContent = p.tipo || 'Tipo não informado';
+                document.getElementById('proc-parte').textContent = 'Parte: ' + (p.parte_nome || '-');
+                document.getElementById('proc-data').textContent = 'Entrada: ' + ClienteUI.formatDate(p.data_entrada);
+
+                const statusEl = document.getElementById('proc-status');
+                statusEl.textContent = p.status;
+                statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold border ' + ClienteUI.getStatusClass(p.status);
+
+                if (p.data_prazo) {
+                    document.getElementById('proc-prazo-container').classList.remove('hidden');
+                    document.getElementById('proc-prazo').textContent = ClienteUI.formatDate(p.data_prazo);
+                }
+
+                if (p.descricao && p.descricao.trim()) {
+                    document.getElementById('proc-descricao-container').classList.remove('hidden');
+                    document.getElementById('proc-descricao').textContent = p.descricao;
+                }
+
+                if (p.link_pasta) {
+                    const btnDrive = document.getElementById('btn-drive');
+                    btnDrive.href = p.link_pasta;
+                    btnDrive.classList.remove('hidden');
+                }
+
+                renderMovimentacoes(movs);
+
+            } catch (error) {
+                console.error('Erro ao carregar processo:', error);
+                loadingState.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                        <p class="text-slate-700 font-medium mb-2">Erro ao carregar processo</p>
+                        <p class="text-slate-500 text-sm mb-4">${error.message}</p>
+                        <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                            Tentar novamente
+                        </button>
+                    </div>
+                `;
             }
         }
 
-        function renderizarDetalhes(p) {
-            document.getElementById('numero-processo').innerText = p.numero_processo;
-            document.getElementById('tipo-acao').innerText = p.tipo_acao || 'Ação Diversa';
-            document.getElementById('nome-parte').innerText = p.parte_nome;
-            document.getElementById('cpf-parte').innerText = formatarCPF(p.parte_cpf);
-            document.getElementById('data-abertura').innerText = new Date(p.data_cadastro).toLocaleDateString('pt-BR');
-            document.getElementById('data-atualizacao').innerText = new Date(p.data_atualizacao).toLocaleDateString('pt-BR');
-
-            const badge = document.getElementById('status-badge');
-            badge.innerText = p.status;
-            
-            // Classes de cor baseadas no status
-            const status = (p.status || '').toLowerCase();
-            if (status.includes('arquivado')) badge.className = 'status-badge status-arquivado';
-            else if (status.includes('sobrestado')) badge.className = 'status-badge status-sobrestado';
-            else badge.className = 'status-badge status-andamento';
-        }
-
-        function renderizarMovimentacoes(movs) {
+        function renderMovimentacoes(movs) {
             const container = document.getElementById('timeline-container');
-            container.innerHTML = '';
+            const emptyState = document.getElementById('empty-movimentacoes');
 
             if (!movs || movs.length === 0) {
-                document.getElementById('timeline-empty').style.display = 'block';
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
                 return;
             }
 
-            movs.forEach(m => {
+            container.innerHTML = '';
+
+            movs.forEach((mov, index) => {
                 const item = document.createElement('div');
-                item.className = 'timeline-item';
-                item.innerHTML = `
-                    <div class="timeline-dot"></div>
-                    <div class="timeline-date">${new Date(m.data).toLocaleString('pt-BR')}</div>
-                    <div class="timeline-content">
-                        <div class="timeline-title">${m.tipo}</div>
-                        <div class="timeline-desc">${m.descricao}</div>
-                    </div>
-                `;
-                container.appendChild(item);
-            });
-        }
+                item.className = 'relative opacity-0 animate-fade-in-up';
+                item.style.animationDelay = (index * 0.1) + 's';
+                item.style.animationFillMode = 'forwards';
 
-        /* --- LÓGICA DE ARQUIVOS (NOVO) --- */
-        
-        async function carregarArquivos(pastaId) {
-            const loader = document.getElementById('files-loader');
-            const grid = document.getElementById('files-grid');
-            const empty = document.getElementById('files-empty');
+                let iconColor = 'bg-blue-100 text-blue-600';
+                let icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
 
-            loader.style.display = 'block';
-            
-            try {
-                // Chama a API que lista arquivos da pasta (Proxy)
-                const resultado = await ClienteAPI.listarArquivos(pastaId);
-                const arquivos = resultado.arquivos || [];
-
-                loader.style.display = 'none';
-
-                if (arquivos.length === 0) {
-                    empty.style.display = 'block';
-                    return;
+                const tipoUpper = (mov.tipo || '').toUpperCase();
+                
+                if (tipoUpper.includes('DECISÃO') || tipoUpper.includes('SENTENÇA')) {
+                    iconColor = 'bg-green-100 text-green-600';
+                    icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                } else if (tipoUpper.includes('AUDIÊNCIA')) {
+                    iconColor = 'bg-purple-100 text-purple-600';
+                    icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>';
                 }
 
-                arquivos.forEach(arq => {
-                    const card = document.createElement('div');
-                    card.className = 'file-card';
-                    card.onclick = () => abrirArquivo(arq); // Clique abre o modal
+                // ============================================================
+                // BOTÃO DE ANEXO - USA ClienteUI.viewFile() PARA PROXY
+                // ============================================================
+                let anexoHtml = '';
+                if (mov.anexo_link) {
+                    // Escapa aspas para evitar problemas no onclick
+                    const safeUrl = (mov.anexo_link || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    const safeNome = (mov.anexo_nome || 'Documento').replace(/'/g, "\\'").replace(/"/g, '\\"');
                     
-                    // Ícone baseado no tipo
-                    let iconClass = 'fa-file';
-                    if (arq.mimeType.includes('pdf')) iconClass = 'fa-file-pdf';
-                    else if (arq.mimeType.includes('image')) iconClass = 'fa-file-image';
-                    else if (arq.mimeType.includes('word') || arq.mimeType.includes('officedocument')) iconClass = 'fa-file-word';
-                    else if (arq.mimeType.includes('sheet') || arq.mimeType.includes('excel')) iconClass = 'fa-file-excel';
-
-                    card.innerHTML = `
-                        <i class="far ${iconClass} file-icon"></i>
-                        <div class="file-name" title="${arq.nome}">${arq.nome}</div>
-                        <div class="file-date">${new Date(arq.dataCriacao).toLocaleDateString('pt-BR')}</div>
-                    `;
-                    grid.appendChild(card);
-                });
-
-            } catch (e) {
-                loader.style.display = 'none';
-                empty.innerText = 'Não foi possível carregar os arquivos.';
-                empty.style.display = 'block';
-                console.error(e);
-            }
-        }
-
-        async function abrirArquivo(arquivo) {
-            const modal = document.getElementById('file-modal');
-            const modalTitle = document.getElementById('modal-filename');
-            const modalContent = document.getElementById('modal-content');
-            const modalLoader = document.getElementById('modal-loader');
-
-            // Reset modal
-            modalContent.innerHTML = '';
-            modalTitle.innerText = arquivo.nome;
-            modal.style.display = 'flex';
-            modalLoader.style.display = 'block';
-
-            try {
-                // Baixa o base64 do arquivo
-                const dados = await ClienteAPI.baixarArquivo(arquivo.id);
-                
-                modalLoader.style.display = 'none';
-
-                if (dados.mimeType.includes('image')) {
-                    // Imagem
-                    const img = document.createElement('img');
-                    img.src = `data:${dados.mimeType};base64,${dados.base64}`;
-                    img.className = 'preview-content';
-                    modalContent.appendChild(img);
-
-                } else if (dados.mimeType.includes('pdf')) {
-                    // PDF
-                    const iframe = document.createElement('iframe');
-                    iframe.src = `data:application/pdf;base64,${dados.base64}`;
-                    iframe.className = 'iframe-preview';
-                    modalContent.appendChild(iframe);
-
-                } else {
-                    // Outros (Download forçado)
-                    modalContent.innerHTML = `
-                        <div style="text-align: center;">
-                            <p>Pré-visualização não disponível para este formato.</p>
-                            <a href="data:${dados.mimeType};base64,${dados.base64}" download="${dados.nome}" 
-                               style="background: #3498db; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;">
-                                <i class="fas fa-download"></i> Baixar Arquivo
-                            </a>
+                    anexoHtml = `
+                        <div class="mt-3 pt-3 border-t border-slate-100">
+                            <button 
+                                onclick="ClienteUI.viewFile('${safeUrl}', '${safeNome}')" 
+                                class="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto justify-center"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                </svg>
+                                ${mov.anexo_nome || 'Ver Anexo'}
+                            </button>
                         </div>
                     `;
                 }
 
-            } catch (e) {
-                modalLoader.style.display = 'none';
-                modalContent.innerHTML = `<p style="color: red;">Erro ao carregar arquivo: ${e.message}</p>`;
-            }
-        }
+                item.innerHTML = `
+                    <div class="absolute left-0 top-0 w-10 h-10 rounded-full ${iconColor} flex items-center justify-center border-4 border-white shadow-md z-10">
+                        ${icon}
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-slate-800">${mov.tipo}</h3>
+                            <span class="text-xs text-slate-500">${ClienteUI.formatDate(mov.data_movimentacao)}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">${ClienteUI.escapeHtml(mov.descricao)}</p>
+                        ${anexoHtml}
+                    </div>
+                `;
 
-        function fecharModal() {
-            document.getElementById('file-modal').style.display = 'none';
-            document.getElementById('modal-content').innerHTML = ''; // Limpa memória
-        }
-
-        function fazerLogout() {
-            ClienteAuth.logout();
-        }
-
-        function formatarCPF(cpf) {
-            if (!cpf) return '';
-            return cpf.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-        }
-
-        // Fecha modal ao clicar fora
-        window.onclick = function(event) {
-            const modal = document.getElementById('file-modal');
-            if (event.target == modal) {
-                fecharModal();
-            }
+                container.appendChild(item);
+            });
         }
     </script>
+
 </body>
+
 </html>
