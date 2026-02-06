@@ -1,6 +1,6 @@
 /**
  * ============================================================================
- * ARQUIVO: cliente/js/cliente-api.js
+ * ARQUIVO: cliente/js/cliente-api.js 
  * DESCRIÇÃO: Camada de comunicação com a API para o módulo Cliente
  * VERSÃO: 1.1 - Com suporte a download de arquivos via proxy
  * ============================================================================
@@ -383,3 +383,4 @@ const ClienteUI = {
         document.addEventListener('keydown', handleEsc);
     }
 };
+
