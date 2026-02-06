@@ -2,6 +2,7 @@
  * ============================================================================
  * ARQUIVO: cliente/js/cliente-api.js
  * DESCRIÇÃO: Camada de comunicação com a API para o módulo Cliente
+ * VERSÃO: 1.1 - Com suporte a download de arquivos via proxy
  * ============================================================================
  */
 
@@ -102,10 +103,14 @@ const ClienteAPI = {
     // ══════════════════════════════════════════════════════════════════════
 
     /**
-     * Baixa arquivo via proxy (para visualização).
+     * Baixa arquivo via proxy (para visualização sem login no Google).
+     * O backend baixa o arquivo do Drive e retorna em Base64.
+     * 
+     * @param {string} fileUrl - URL ou ID do arquivo no Google Drive
+     * @returns {Promise<{base64: string, mimeType: string, nome: string}>}
      */
     downloadArquivo: function(fileUrl) {
-        return this.call('downloadArquivoCliente', { fileUrl: fileUrl });
+        return this.call('downloadArquivoCliente', { fileUrl: fileUrl }, true);
     }
 };
 
@@ -255,6 +260,126 @@ const ClienteUI = {
     escapeHtml: function(text) {
         if (!text) return '';
         return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
-    }
+    },
 
+    /**
+     * Abre arquivo em um modal de visualização.
+     * Baixa o arquivo via proxy e exibe em Base64.
+     * 
+     * @param {string} fileUrl - URL do arquivo no Drive
+     * @param {string} fileName - Nome do arquivo para exibir
+     */
+    viewFile: async function(fileUrl, fileName) {
+        if (!fileUrl) {
+            this.showToast('URL do arquivo não fornecida.', 'error');
+            return;
+        }
+
+        // Mostra loading
+        this.showLoading('Carregando arquivo...');
+
+        try {
+            // Baixa o arquivo via API (proxy)
+            const data = await ClienteAPI.downloadArquivo(fileUrl);
+
+            if (!data || !data.base64) {
+                throw new Error('Dados do arquivo não recebidos.');
+            }
+
+            // Cria URL blob para visualização
+            const byteCharacters = atob(data.base64);
+            const byteNumbers = new Array(byteCharacters.length);
+            for (let i = 0; i < byteCharacters.length; i++) {
+                byteNumbers[i] = byteCharacters.charCodeAt(i);
+            }
+            const byteArray = new Uint8Array(byteNumbers);
+            const blob = new Blob([byteArray], { type: data.mimeType });
+            const blobUrl = URL.createObjectURL(blob);
+
+            this.hideLoading();
+
+            // Decide como exibir baseado no tipo
+            if (data.mimeType.includes('pdf')) {
+                // PDF: Abre em nova aba
+                window.open(blobUrl, '_blank');
+            } else if (data.mimeType.includes('image')) {
+                // Imagem: Mostra em modal
+                this._showImageModal(blobUrl, fileName || data.nome);
+            } else {
+                // Outros: Força download
+                const link = document.createElement('a');
+                link.href = blobUrl;
+                link.download = fileName || data.nome || 'arquivo';
+                document.body.appendChild(link);
+                link.click();
+                document.body.removeChild(link);
+                
+                this.showToast('Download iniciado!', 'success');
+            }
+
+        } catch (error) {
+            this.hideLoading();
+            console.error('Erro ao visualizar arquivo:', error);
+            this.showToast(error.message || 'Erro ao carregar arquivo.', 'error');
+        }
+    },
+
+    /**
+     * Mostra modal com imagem.
+     * @private
+     */
+    _showImageModal: function(imageUrl, title) {
+        // Remove modal existente se houver
+        const existingModal = document.getElementById('image-modal');
+        if (existingModal) existingModal.remove();
+
+        // Cria o modal
+        const modal = document.createElement('div');
+        modal.id = 'image-modal';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4';
+        modal.innerHTML = `
+            <div class="relative max-w-4xl w-full">
+                <!-- Botão Fechar -->
+                <button id="close-image-modal" class="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors">
+                    <svg class="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+                
+                <!-- Título -->
+                <p class="text-white text-center mb-4 font-medium truncate">${this.escapeHtml(title)}</p>
+                
+                <!-- Imagem -->
+                <img src="${imageUrl}" alt="${this.escapeHtml(title)}" class="max-w-full max-h-[80vh] mx-auto rounded-lg shadow-2xl">
+                
+                <!-- Botão Download -->
+                <div class="text-center mt-4">
+                    <a href="${imageUrl}" download="${this.escapeHtml(title)}" 
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"></path>
+                        </svg>
+                        Baixar Imagem
+                    </a>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // Eventos para fechar
+        document.getElementById('close-image-modal').addEventListener('click', () => modal.remove());
+        modal.addEventListener('click', (e) => {
+            if (e.target === modal) modal.remove();
+        });
+
+        // ESC para fechar
+        const handleEsc = (e) => {
+            if (e.key === 'Escape') {
+                modal.remove();
+                document.removeEventListener('keydown', handleEsc);
+            }
+        };
+        document.addEventListener('keydown', handleEsc);
+    }
 };
