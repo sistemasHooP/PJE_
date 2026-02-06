@@ -3,208 +3,293 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Consulta de Processos - Sistema Jurídico RPPS</title>
+    <title>Detalhes do Processo - Acompanhamento Processual</title>
     
-    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Fonte Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
-    <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="css/style.css">
 
     <style>
         body { font-family: 'Inter', sans-serif; }
+        
+        .timeline-line::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 20px;
+            width: 2px;
+            background-color: #e2e8f0;
+            z-index: 0;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(20px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .animate-fade-in-up {
+            animation: fadeInUp 0.4s ease-out forwards;
+        }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
+<body class="bg-slate-100 min-h-screen">
 
-    <!-- Navbar Mobile (Topo) -->
-    <nav class="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
-        <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
-            </div>
-            <span class="font-bold text-lg tracking-tight">RPPS Jurídico</span>
-        </div>
-    </nav>
-
-    <div class="flex h-screen overflow-hidden">
-        
-        <!-- Sidebar (Desktop) -->
-        <aside class="hidden md:flex flex-col w-64 bg-slate-800 text-white h-full shrink-0">
-            <div class="p-6 border-b border-slate-700">
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
-                    RPPS
-                </h1>
-                <p class="text-xs text-slate-400 mt-1 pl-10">Jurídico v1.0</p>
-            </div>
-
-            <!-- User Info Desktop -->
-            <div class="p-6 border-b border-slate-700 bg-slate-900/50">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg">
-                        <span id="user-initials">U</span>
-                    </div>
-                    <div>
-                        <p class="text-sm font-semibold truncate w-32" id="user-name-display">Carregando...</p>
-                        <p class="text-xs text-blue-300 uppercase tracking-wider" id="user-profile-display">...</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Menu Desktop -->
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-                <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Dashboard
+    <header class="bg-slate-800 text-white shadow-lg sticky top-0 z-40">
+        <div class="max-w-4xl mx-auto px-4 py-4">
+            <div class="flex items-center justify-between">
+                <a href="processos.html" class="flex items-center gap-2 text-slate-400 hover:text-white transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="text-sm font-medium">Voltar</span>
                 </a>
-                <a href="processos.html" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/30">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Processos
-                </a>
-                <a href="novo-processo.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Novo Processo
-                </a>
-            </nav>
-
-            <div class="p-4 border-t border-slate-700">
-                <button id="desktop-logout-btn" class="flex items-center gap-3 w-full px-4 py-2 text-slate-400 hover:text-red-400 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Sair do Sistema
+                
+                <button id="btn-logout" class="p-2 text-slate-400 hover:text-white hover:bg-slate-700 rounded-lg transition-colors" title="Sair">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
+                    </svg>
                 </button>
             </div>
-        </aside>
+        </div>
+    </header>
 
-        <!-- Conteúdo Principal -->
-        <main class="flex-1 h-full overflow-y-auto bg-slate-50 p-4 md:p-8">
+    <main class="max-w-4xl mx-auto px-4 py-6">
+        
+        <div id="loading-state" class="bg-white rounded-2xl p-8 text-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-t-4 border-b-4 border-blue-600 mx-auto mb-4"></div>
+            <p class="text-slate-500">Carregando detalhes do processo...</p>
+        </div>
+
+        <div id="processo-content" class="hidden">
             
-            <!-- Header da Página -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800">Consulta de Processos</h2>
-                    <p class="text-slate-500">Gerencie e pesquise os processos do RPPS.</p>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 mb-6">
+                <div class="flex items-center gap-2 mb-3">
+                    <span id="proc-status" class="px-3 py-1 rounded-full text-xs font-bold border bg-slate-100 text-slate-600">
+                        CARREGANDO
+                    </span>
+                    <span id="proc-data" class="text-xs text-slate-400">--/--/----</span>
                 </div>
-                <a href="novo-processo.html" class="w-full md:w-auto bg-slate-800 hover:bg-slate-900 text-white px-6 py-3 rounded-lg font-medium shadow-lg shadow-slate-500/20 flex items-center justify-center gap-2 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Novo Processo
+                
+                <h1 id="proc-numero" class="text-2xl font-bold text-slate-800 mb-2">Processo nº ...</h1>
+                <p id="proc-tipo" class="text-slate-600 font-medium mb-1">...</p>
+                <p id="proc-parte" class="text-slate-500 text-sm">Parte: ...</p>
+                
+                <div id="proc-prazo-container" class="hidden mt-4 p-3 bg-amber-50 border border-amber-200 rounded-lg">
+                    <div class="flex items-center gap-2 text-sm">
+                        <svg class="w-4 h-4 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        <span class="font-semibold text-amber-800">Prazo:</span>
+                        <span id="proc-prazo" class="text-amber-700"></span>
+                    </div>
+                </div>
+                
+                <div id="proc-descricao-container" class="hidden mt-4 p-3 bg-slate-50 rounded-lg border border-slate-200">
+                    <p class="text-xs text-slate-500 font-semibold mb-1">Observações:</p>
+                    <p id="proc-descricao" class="text-sm text-slate-700"></p>
+                </div>
+
+                <a id="btn-drive" href="#" target="_blank" class="hidden mt-4 inline-flex items-center gap-2 px-4 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 8h14M5 8a2 2 0 110-4h14a2 2 0 110 4M5 8v10a2 2 0 002 2h10a2 2 0 002-2V8m-9 4h4"></path>
+                    </svg>
+                    Ver Pasta de Arquivos
                 </a>
             </div>
 
-            <!-- Barra de Filtros -->
-            <div class="bg-white p-4 rounded-xl shadow-sm border border-slate-100 mb-6">
-                <form id="search-form" class="grid grid-cols-1 md:grid-cols-4 gap-4">
-                    
-                    <!-- Campo de Busca Textual -->
-                    <div class="md:col-span-2 relative">
-                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                            <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                            </svg>
-                        </div>
-                        <!-- ATUALIZADO: Placeholder corrigido -->
-                        <input type="text" id="filter-busca" 
-                            class="block w-full pl-10 pr-3 py-2.5 border border-slate-300 rounded-lg text-slate-900 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent" 
-                            placeholder="Buscar por nome ou nº do processo...">
-                    </div>
-
-                    <!-- Filtro de Status -->
-                    <div>
-                        <select id="filter-status" class="block w-full py-2.5 px-3 border border-slate-300 rounded-lg text-slate-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent">
-                            <option value="">Todos os Status</option>
-                            <option value="EM ANDAMENTO">Em Andamento</option>
-                            <option value="SOBRESTADO">Sobrestado</option>
-                            <option value="JULGADO">Julgado</option>
-                            <option value="ARQUIVADO">Arquivado</option>
-                            <option value="CANCELADO">Cancelado</option>
-                        </select>
-                    </div>
-
-                    <!-- Botão Filtrar (Mantido visualmente mas a busca é automática) -->
-                    <div>
-                        <button type="submit" class="w-full h-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2.5 px-4 rounded-lg transition-colors flex items-center justify-center gap-2">
-                            Filtrar
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Lista de Resultados (Tabela) -->
-            <div class="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden min-h-[400px]">
-                <div class="overflow-x-auto">
-                    <table class="w-full text-left text-sm text-slate-600">
-                        <thead class="bg-slate-50 text-xs uppercase text-slate-500 font-semibold border-b border-slate-100">
-                            <tr>
-                                <th class="px-6 py-4">Identificação</th>
-                                <th class="px-6 py-4 hidden sm:table-cell">Natureza / Tipo</th>
-                                <th class="px-6 py-4">Status</th>
-                                <th class="px-6 py-4 hidden md:table-cell">Entrada</th>
-                                <th class="px-6 py-4 text-right">Ações</th>
-                            </tr>
-                        </thead>
-                        <tbody id="processos-list" class="divide-y divide-slate-100">
-                            <!-- Estado de Carregamento Inicial -->
-                            <tr>
-                                <td colspan="5" class="px-6 py-12 text-center text-slate-400">
-                                    <div class="flex flex-col items-center justify-center">
-                                        <svg class="w-8 h-8 animate-spin text-blue-500 mb-3" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        <p>Buscando processos...</p>
-                                    </div>
-                                </td>
-                            </tr>
-                        </tbody>
-                    </table>
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+                <h2 class="text-lg font-bold text-slate-800 mb-4 flex items-center gap-2">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    Histórico de Movimentações
+                </h2>
+                
+                <div id="timeline-container" class="relative timeline-line space-y-6 pl-12">
                 </div>
                 
-                <!-- Feedback de Lista Vazia -->
-                <div id="empty-state" class="hidden flex-col items-center justify-center py-12 text-center">
-                    <div class="bg-slate-50 p-4 rounded-full mb-3">
-                        <svg class="w-8 h-8 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    </div>
-                    <h3 class="text-lg font-medium text-slate-900">Nenhum processo encontrado</h3>
-                    <p class="text-slate-500 max-w-sm mx-auto mt-1">Tente ajustar os filtros de busca ou cadastre um novo processo.</p>
+                <div id="empty-movimentacoes" class="hidden text-center py-8 text-slate-400">
+                    <svg class="w-12 h-12 mx-auto mb-3 opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                    <p>Nenhuma movimentação registrada ainda.</p>
                 </div>
             </div>
+
+        </div>
+
+    </main>
+
+<script src="js/cliente-config.js?v=1.2.0"></script>
+<script src="js/cliente-api.js?v=1.2.0"></script>
+<script src="js/cliente-auth.js?v=1.2.0"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
             
-            <!-- Contador de Resultados -->
-            <div class="mt-4 text-xs text-slate-400 text-center md:text-left">
-                Exibindo <span id="results-count" class="font-bold text-slate-600">0</span> processos
-            </div>
+            if (!ClienteAuth.protectRoute()) return;
 
-            <div class="h-20 md:h-0"></div> <!-- Espaçador Mobile -->
+            document.getElementById('btn-logout').addEventListener('click', function() {
+                if (confirm('Deseja sair do sistema?')) {
+                    ClienteAuth.logout();
+                }
+            });
 
-        </main>
-    </div>
+            const params = new URLSearchParams(window.location.search);
+            const processoId = params.get('id');
 
-    <!-- Bottom Navigation Bar (Mobile Only) -->
-    <div class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around py-3 pb-safe z-50">
-        <a href="dashboard.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Início</span>
-        </a>
-        <a href="processos.html" class="flex flex-col items-center text-blue-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Processos</span>
-        </a>
-        <a href="novo-processo.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <div class="relative">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <span class="text-[10px] font-medium mt-1">Novo</span>
-        </a>
-    </div>
+            if (!processoId) {
+                alert('Processo não identificado.');
+                window.location.href = 'processos.html';
+                return;
+            }
 
-    <!-- Scripts de Infraestrutura -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
+            loadProcessoDetalhes(processoId);
+        });
 
-    <!-- Script da Página -->
-    <script src="js/processos.js"></script>
+        async function loadProcessoDetalhes(id) {
+            const loadingState = document.getElementById('loading-state');
+            const processoContent = document.getElementById('processo-content');
+
+            try {
+                const data = await ClienteAPI.getProcesso(id);
+
+                if (!data || !data.processo) {
+                    throw new Error('Dados do processo não encontrados.');
+                }
+
+                const p = data.processo;
+                const movs = data.movimentacoes || [];
+
+                loadingState.classList.add('hidden');
+                processoContent.classList.remove('hidden');
+
+                document.getElementById('proc-numero').textContent = 'Processo nº ' + (p.numero_processo || 'S/N');
+                document.getElementById('proc-tipo').textContent = p.tipo || 'Tipo não informado';
+                document.getElementById('proc-parte').textContent = 'Parte: ' + (p.parte_nome || '-');
+                document.getElementById('proc-data').textContent = 'Entrada: ' + ClienteUI.formatDate(p.data_entrada);
+
+                const statusEl = document.getElementById('proc-status');
+                statusEl.textContent = p.status;
+                statusEl.className = 'px-3 py-1 rounded-full text-xs font-bold border ' + ClienteUI.getStatusClass(p.status);
+
+                if (p.data_prazo) {
+                    document.getElementById('proc-prazo-container').classList.remove('hidden');
+                    document.getElementById('proc-prazo').textContent = ClienteUI.formatDate(p.data_prazo);
+                }
+
+                if (p.descricao && p.descricao.trim()) {
+                    document.getElementById('proc-descricao-container').classList.remove('hidden');
+                    document.getElementById('proc-descricao').textContent = p.descricao;
+                }
+
+                if (p.link_pasta) {
+                    const btnDrive = document.getElementById('btn-drive');
+                    btnDrive.href = p.link_pasta;
+                    btnDrive.classList.remove('hidden');
+                }
+
+                renderMovimentacoes(movs);
+
+            } catch (error) {
+                console.error('Erro ao carregar processo:', error);
+                loadingState.innerHTML = `
+                    <div class="text-center">
+                        <div class="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                            <svg class="w-8 h-8 text-red-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </div>
+                        <p class="text-slate-700 font-medium mb-2">Erro ao carregar processo</p>
+                        <p class="text-slate-500 text-sm mb-4">${error.message}</p>
+                        <button onclick="location.reload()" class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700 transition-colors">
+                            Tentar novamente
+                        </button>
+                    </div>
+                `;
+            }
+        }
+
+        function renderMovimentacoes(movs) {
+            const container = document.getElementById('timeline-container');
+            const emptyState = document.getElementById('empty-movimentacoes');
+
+            if (!movs || movs.length === 0) {
+                container.classList.add('hidden');
+                emptyState.classList.remove('hidden');
+                return;
+            }
+
+            container.innerHTML = '';
+
+            movs.forEach((mov, index) => {
+                const item = document.createElement('div');
+                item.className = 'relative opacity-0 animate-fade-in-up';
+                item.style.animationDelay = (index * 0.1) + 's';
+                item.style.animationFillMode = 'forwards';
+
+                let iconColor = 'bg-blue-100 text-blue-600';
+                let icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>';
+
+                const tipoUpper = (mov.tipo || '').toUpperCase();
+                
+                if (tipoUpper.includes('DECISÃO') || tipoUpper.includes('SENTENÇA')) {
+                    iconColor = 'bg-green-100 text-green-600';
+                    icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
+                } else if (tipoUpper.includes('AUDIÊNCIA')) {
+                    iconColor = 'bg-purple-100 text-purple-600';
+                    icon = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"></path></svg>';
+                }
+
+                // ============================================================
+                // BOTÃO DE ANEXO - USA ClienteUI.viewFile() PARA PROXY
+                // ============================================================
+                let anexoHtml = '';
+                if (mov.anexo_link) {
+                    // Escapa aspas para evitar problemas no onclick
+                    const safeUrl = (mov.anexo_link || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    const safeNome = (mov.anexo_nome || 'Documento').replace(/'/g, "\\'").replace(/"/g, '\\"');
+                    
+                    anexoHtml = `
+                        <div class="mt-3 pt-3 border-t border-slate-100">
+                            <button 
+                                onclick="ClienteUI.viewFile('${safeUrl}', '${safeNome}')" 
+                                class="inline-flex items-center gap-2 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-sm font-medium transition-colors w-full sm:w-auto justify-center"
+                            >
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
+                                </svg>
+                                ${mov.anexo_nome || 'Ver Anexo'}
+                            </button>
+                        </div>
+                    `;
+                }
+
+                item.innerHTML = `
+                    <div class="absolute left-0 top-0 w-10 h-10 rounded-full ${iconColor} flex items-center justify-center border-4 border-white shadow-md z-10">
+                        ${icon}
+                    </div>
+                    <div class="bg-white p-5 rounded-xl shadow-sm border border-slate-200 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start mb-2">
+                            <h3 class="font-bold text-slate-800">${mov.tipo}</h3>
+                            <span class="text-xs text-slate-500">${ClienteUI.formatDate(mov.data_movimentacao)}</span>
+                        </div>
+                        <p class="text-sm text-slate-600 leading-relaxed">${ClienteUI.escapeHtml(mov.descricao)}</p>
+                        ${anexoHtml}
+                    </div>
+                `;
+
+                container.appendChild(item);
+            });
+        }
+    </script>
 
 </body>
+
 </html>
