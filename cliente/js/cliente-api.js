@@ -105,7 +105,7 @@ const ClienteAPI = {
      * Baixa arquivo via proxy (para visualização).
      */
     downloadArquivo: function(fileUrl) {
-        return this.call('downloadArquivo', { fileUrl: fileUrl });
+        return this.call('downloadArquivoCliente', { fileUrl: fileUrl });
     }
 };
 
@@ -256,4 +256,5 @@ const ClienteUI = {
         if (!text) return '';
         return text.replace(/</g, '&lt;').replace(/>/g, '&gt;');
     }
+
 };
