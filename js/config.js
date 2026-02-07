@@ -14,7 +14,7 @@ const CONFIG = {
 
     // Nome da aplicação para exibição em títulos e rodapés
     APP_NAME: "Sistema Jurídico RPPS",
-    
+
     // Versão atual
     VERSION: "1.0.0",
 
@@ -31,6 +31,7 @@ const CONFIG = {
         DASHBOARD: "dashboard.html",
         PROCESSOS: "processos.html",
         NOVO_PROCESSO: "novo-processo.html",
+        CLIENTES: "clientes.html",
         DETALHE_PROCESSO: "detalhe-processo.html"
     }
 };
