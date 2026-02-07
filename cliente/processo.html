@@ -126,9 +126,9 @@
 
     </main>
 
-<script src="js/cliente-config.js?v=1.3.0"></script>
-<script src="js/cliente-api.js?v=1.3.0"></script>
-<script src="js/cliente-auth.js?v=1.3.0"></script>
+<script src="js/cliente-config.js?v=1.4.0"></script>
+<script src="js/cliente-api.js?v=1.4.0"></script>
+<script src="js/cliente-auth.js?v=1.4.0"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -233,7 +233,7 @@
 
                 const modal = document.createElement('div');
                 modal.id = 'pasta-arquivos-modal';
-                modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-70 p-4';
+                modal.className = 'fixed inset-0 z-[60] flex items-center justify-center bg-black bg-opacity-70 p-3 sm:p-4';
 
                 const listaHtml = arquivos.length > 0
                     ? arquivos.map(function(arquivo) {
