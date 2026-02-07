@@ -1,744 +1,526 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Processo - Sistema Jurídico RPPS</title>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Novo Processo - Sistema Jurídico</title>
 
-    <!-- Tailwind CSS -->
+    <!-- Tailwind -->
     <script src="https://cdn.tailwindcss.com"></script>
-
-    <!-- Fonte -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Flatpickr para DatePicker -->
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
     <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
     <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
 
-    <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="css/style.css">
+    <!-- CSS do Projeto -->
+    <link rel="stylesheet" href="./css/style.css">
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
-
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
+        /* Pequenas animações locais (caso seu CSS global não tenha) */
+        @keyframes slideDown {
+            from { opacity: 0; transform: translateY(-8px); }
             to { opacity: 1; transform: translateY(0); }
         }
+        .animate-slide-down { animation: slideDown .22s ease-out both; }
 
-        @keyframes slideDown {
-            from { opacity: 0; max-height: 0; }
-            to { opacity: 1; max-height: 500px; }
-        }
-
-        .animate-fade-in {
-            animation: fadeIn 0.3s ease-out forwards;
-        }
-
-        .animate-slide-down {
-            animation: slideDown 0.4s ease-out forwards;
-            overflow: hidden;
-        }
-
-        /* Input focus */
         .input-focus:focus {
-            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15);
-        }
-
-        /* Cliente card */
-        .cliente-card {
-            background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%);
-            border: 2px solid #86efac;
-        }
-
-        /* Stepper */
-        .step-active {
-            background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-            color: white;
-            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.4);
-        }
-
-        .step-complete {
-            background: #10b981;
-            color: white;
-        }
-
-        .step-pending {
-            background: #e2e8f0;
-            color: #94a3b8;
-        }
-
-        /* Loader no botão */
-        .btn-loading {
-            position: relative;
-            color: transparent !important;
-        }
-
-        .btn-loading::after {
-            content: '';
-            position: absolute;
-            width: 20px;
-            height: 20px;
-            top: 50%;
-            left: 50%;
-            margin-left: -10px;
-            margin-top: -10px;
-            border: 3px solid rgba(255,255,255,0.3);
-            border-radius: 50%;
-            border-top-color: white;
-            animation: spin 0.8s linear infinite;
-        }
-
-        @keyframes spin {
-            to { transform: rotate(360deg); }
+            outline: none;
+            box-shadow: 0 0 0 4px rgba(59,130,246,.15);
         }
     </style>
 </head>
-<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
 
-    <!-- Navbar Mobile (Topo) -->
-    <nav class="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
-        <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
+<body class="bg-slate-50 min-h-screen">
+
+<!-- Layout -->
+<div class="flex min-h-screen">
+
+    <!-- Sidebar -->
+    <aside class="w-72 bg-slate-900 text-white hidden md:flex flex-col">
+        <div class="p-6 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                        <path d="M12 3l10 6-10 6-10-6 10-6z"></path>
+                        <path d="M2 9v6l10 6 10-6V9"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h1 class="text-lg font-bold">RPPS</h1>
+                    <p class="text-xs text-slate-300">Jurídico v1.0</p>
+                </div>
             </div>
-            <span class="font-bold text-lg tracking-tight">RPPS Jurídico</span>
         </div>
-    </nav>
 
-    <div class="flex h-screen overflow-hidden">
-
-        <!-- Sidebar (Desktop) -->
-        <aside class="hidden md:flex flex-col w-64 bg-slate-800 text-white h-full shrink-0">
-            <div class="p-6 border-b border-slate-700">
-                <h1 class="text-2xl font-bold flex items-center gap-2">
-                    <svg class="w-8 h-8 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
-                    RPPS
-                </h1>
-                <p class="text-xs text-slate-400 mt-1 pl-10">Jurídico v1.0</p>
+        <div class="p-6 border-b border-white/10">
+            <div class="flex items-center gap-3">
+                <div id="user-avatar" class="w-12 h-12 rounded-xl bg-white/10 flex items-center justify-center font-bold">
+                    A
+                </div>
+                <div>
+                    <div id="user-name-display" class="font-semibold">Usuário</div>
+                    <div id="user-profile-display" class="text-xs text-slate-300">Perfil</div>
+                </div>
             </div>
+        </div>
 
-            <!-- User Info Desktop -->
-            <div class="p-6 border-b border-slate-700 bg-slate-900/50">
+        <nav class="flex-1 p-4 space-y-2">
+            <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M3 3h7v7H3V3zM14 3h7v7h-7V3zM14 14h7v7h-7v-7zM3 14h7v7H3v-7z"></path>
+                </svg>
+                Dashboard
+            </a>
+            <a href="processos.html" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M7 7h10M7 11h10M7 15h10M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z"></path>
+                </svg>
+                Processos
+            </a>
+            <a href="clientes.html" class="flex items-center gap-3 px-4 py-3 rounded-xl hover:bg-white/10 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"></path>
+                    <path d="M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
+                    <path d="M23 21v-2a4 4 0 0 0-3-3.87"></path>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"></path>
+                </svg>
+                Clientes
+            </a>
+            <a href="novo-processo.html" class="flex items-center gap-3 px-4 py-3 rounded-xl bg-blue-600 shadow-lg shadow-blue-600/25 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M12 5v14M5 12h14"></path>
+                </svg>
+                Novo Processo
+            </a>
+        </nav>
+
+        <div class="p-4">
+            <button id="desktop-logout-btn" class="w-full flex items-center justify-center gap-2 px-4 py-3 rounded-xl bg-white/10 hover:bg-white/15 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M10 17l5-5m0 0l-5-5m5 5H3"></path>
+                    <path d="M21 12a9 9 0 0 0-9-9"></path>
+                    <path d="M21 12a9 9 0 0 1-9 9"></path>
+                </svg>
+                Sair do Sistema
+            </button>
+        </div>
+    </aside>
+
+    <!-- Conteúdo -->
+    <main class="flex-1 p-4 md:p-8">
+
+        <!-- Header -->
+        <div class="flex items-start justify-between gap-4 mb-6">
+            <div>
+                <h2 class="text-2xl font-bold text-slate-900">Novo Processo</h2>
+                <p class="text-slate-500">Cadastre um novo processo no sistema</p>
+            </div>
+            <a href="processos.html" class="inline-flex items-center gap-2 text-slate-600 hover:text-blue-600 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                    <path d="M15 18l-6-6 6-6"></path>
+                </svg>
+                Voltar para lista
+            </a>
+        </div>
+
+        <!-- Stepper -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+            <div class="flex items-center justify-center gap-4">
                 <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-full bg-blue-500 flex items-center justify-center font-bold text-lg">
-                        <span id="user-initials">U</span>
+                    <div id="step-1-circle" class="w-10 h-10 rounded-full bg-blue-600 text-white flex items-center justify-center font-bold">1</div>
+                    <div class="font-semibold text-slate-800">Cliente</div>
+                </div>
+                <div class="w-16 h-1 rounded-full bg-slate-200"></div>
+                <div class="flex items-center gap-3">
+                    <div id="step-2-circle" class="w-10 h-10 rounded-full bg-slate-200 text-slate-700 flex items-center justify-center font-bold">2</div>
+                    <div class="font-semibold text-slate-400">Processo</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Conteúdo Etapa 1 -->
+        <div id="step1-content" class="animate-fadeIn">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
+
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                            <path d="M12 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8z"></path>
+                        </svg>
                     </div>
                     <div>
-                        <p class="text-sm font-semibold truncate w-32" id="user-name-display">Carregando...</p>
-                        <p class="text-xs text-blue-300 uppercase tracking-wider" id="user-profile-display">...</p>
+                        <h3 class="text-lg font-bold text-slate-900">Identificar Cliente</h3>
+                        <p class="text-slate-500 text-sm">Busque pelo nome, CPF ou email — ou cadastre um novo cliente</p>
                     </div>
                 </div>
-            </div>
 
-            <!-- Menu Desktop -->
-            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
-                <a href="dashboard.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    Dashboard
-                </a>
-                <a href="processos.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    Processos
-                </a>
-                <a href="clientes.html" class="flex items-center gap-3 px-4 py-3 text-slate-300 hover:bg-slate-700 hover:text-white rounded-lg transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
-                    Clientes
-                </a>
-                <a href="novo-processo.html" class="flex items-center gap-3 px-4 py-3 bg-blue-600 rounded-lg text-white shadow-lg shadow-blue-500/30">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-                    Novo Processo
-                </a>
-            </nav>
-
-            <div class="p-4 border-t border-slate-700">
-                <button id="desktop-logout-btn" class="flex items-center gap-3 w-full px-4 py-2 text-slate-400 hover:text-red-400 transition-colors">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    Sair do Sistema
-                </button>
-            </div>
-        </aside>
-
-        <!-- Conteúdo Principal -->
-        <main class="flex-1 h-full overflow-y-auto bg-slate-50 p-4 md:p-8">
-
-            <!-- Header da Página -->
-            <div class="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800">Novo Processo</h2>
-                    <p class="text-slate-500">Cadastre um novo processo no sistema</p>
-                </div>
-                <a href="processos.html" class="text-slate-500 hover:text-slate-700 flex items-center gap-2 text-sm">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                    Voltar para lista
-                </a>
-            </div>
-
-            <!-- Stepper -->
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
-                <div class="flex items-center justify-center gap-4">
-                    <div class="flex items-center gap-2">
-                        <div id="step1-indicator" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-active">1</div>
-                        <span class="text-sm font-medium text-slate-700 hidden sm:block">Cliente</span>
-                    </div>
-                    <div class="w-16 h-1 bg-slate-200 rounded-full">
-                        <div id="progress-bar" class="h-full bg-blue-500 rounded-full transition-all duration-500" style="width: 0%"></div>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <div id="step2-indicator" class="w-10 h-10 rounded-full flex items-center justify-center text-sm font-bold step-pending">2</div>
-                        <span class="text-sm font-medium text-slate-400 hidden sm:block">Processo</span>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Step 1: Cliente -->
-            <div id="step1-content" class="animate-fade-in">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 bg-blue-100 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-slate-800">Identificar Cliente</h3>
-                            <p class="text-sm text-slate-500">Busque pelo CPF ou cadastre um novo cliente</p>
-                        </div>
-                    </div>
-
-                    <!-- Seleção Rápida de Cliente Cadastrado -->
-                    <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">Selecionar Cliente Cadastrado (rápido)</label>
-                        <div class="flex flex-col sm:flex-row gap-3">
-                            <div class="relative flex-1">
-                                <input
-                                    type="text"
-                                    id="cliente-busca-rapida"
-                                    list="clientes-lista"
-                                    placeholder="Digite nome, CPF ou email do cliente"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                                <datalist id="clientes-lista"></datalist>
-                                <div id="clientes-sugestoes" class="hidden absolute z-20 mt-1 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-60 overflow-y-auto"></div>
-                            </div>
-                            <button
-                                id="btn-usar-cliente-rapido"
-                                type="button"
-                                class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all"
+                <!-- Busca ÚNICA (nome/email/CPF) -->
+                <div class="mb-6 p-4 bg-slate-50 border border-slate-200 rounded-xl">
+                    <label class="block text-sm font-semibold text-slate-700 mb-2">Buscar Cliente (nome, CPF ou email)</label>
+                    <div class="flex flex-col sm:flex-row gap-3">
+                        <div class="relative flex-1">
+                            <input
+                                type="text"
+                                id="cliente-busca-rapida"
+                                list="clientes-lista"
+                                placeholder="Digite nome, CPF (11 dígitos) ou email"
+                                class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all"
+                                autocomplete="off"
                             >
-                                Usar Cliente
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-500 mt-2">Dica: se não encontrar, use a busca por CPF abaixo ou cadastre um cliente novo.</p>
-                    </div>
+                            <datalist id="clientes-lista"></datalist>
 
-                    <!-- Busca por CPF -->
-                    <div class="mb-6">
-                        <label class="block text-sm font-semibold text-slate-700 mb-2">CPF do Cliente</label>
-                        <div class="flex gap-3">
-                            <div class="relative flex-1">
-                                <div class="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none">
-                                    <svg class="h-5 w-5 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
-                                    </svg>
-                                </div>
-                                <input
-                                    type="text"
-                                    id="cpf-busca"
-                                    placeholder="000.000.000-00"
-                                    maxlength="14"
-                                    class="w-full pl-12 pr-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 font-medium placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                            </div>
-                            <button
-                                id="btn-buscar-cpf"
-                                type="button"
-                                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center gap-2"
-                            >
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-                                <span>Buscar</span>
-                            </button>
-                        </div>
-                        <p class="text-xs text-slate-400 mt-2">Digite o CPF e clique em buscar para verificar se o cliente já está cadastrado.</p>
-                    </div>
-
-                    <!-- Resultado da Busca: Cliente Encontrado -->
-                    <div id="cliente-encontrado" class="hidden animate-slide-down">
-                        <div class="cliente-card rounded-xl p-5 mb-4">
-                            <div class="flex items-start justify-between">
-                                <div class="flex items-center gap-4">
-                                    <div class="w-14 h-14 bg-green-500 rounded-full flex items-center justify-center text-white text-xl font-bold" id="cliente-iniciais">-</div>
-                                    <div>
-                                        <p class="text-xs text-green-600 font-semibold uppercase tracking-wider mb-1">✓ Cliente Encontrado</p>
-                                        <h3 class="text-lg font-bold text-slate-800" id="cliente-nome">-</h3>
-                                        <p class="text-sm text-slate-600" id="cliente-email">-</p>
-                                        <p class="text-sm text-slate-500" id="cliente-cpf-display">-</p>
-                                    </div>
-                                </div>
-                                <button type="button" onclick="limparCliente()" class="text-slate-400 hover:text-red-500 transition-colors p-2" title="Remover cliente">
-                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
-                                </button>
+                            <div id="clientes-sugestoes"
+                                 class="hidden absolute z-10 mt-2 w-full bg-white border border-slate-200 rounded-lg shadow-xl max-h-72 overflow-y-auto">
                             </div>
                         </div>
-                        <input type="hidden" id="cliente-id-selecionado" value="">
 
-                        <button type="button" onclick="avancarParaProcesso()" class="w-full py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2">
-                            Continuar com este Cliente
-                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
+                        <button
+                            id="btn-usar-cliente-rapido"
+                            type="button"
+                            class="px-5 py-3 bg-emerald-600 hover:bg-emerald-700 text-white font-semibold rounded-xl shadow-lg shadow-emerald-500/30 transition-all"
+                        >
+                            Usar Cliente
                         </button>
                     </div>
+                    <p class="text-xs text-slate-500 mt-2">
+                        Dica: digite nome, email ou CPF. Se for CPF completo (11 dígitos), pressione Enter para buscar no servidor.
+                        Se não existir, você pode cadastrar aqui mesmo.
+                    </p>
+                </div>
 
-                    <!-- Resultado da Busca: Cliente Não Encontrado -->
-                    <div id="cliente-nao-encontrado" class="hidden animate-slide-down">
-                        <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-5 mb-6">
-                            <div class="flex items-start gap-3">
-                                <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                                    <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>
-                                </div>
+                <!-- Resultado da Busca: Cliente Encontrado -->
+                <div id="cliente-encontrado" class="hidden animate-slide-down">
+                    <div class="bg-emerald-50 border-2 border-emerald-200 rounded-xl p-5 mb-6">
+                        <div class="flex items-start justify-between gap-3">
+                            <div class="flex items-start gap-4">
+                                <div class="w-12 h-12 rounded-xl bg-emerald-100 flex items-center justify-center font-bold text-emerald-700" id="cliente-iniciais">C</div>
                                 <div>
-                                    <h4 class="font-semibold text-amber-800">Cliente não encontrado</h4>
-                                    <p class="text-sm text-amber-700 mt-1">Nenhum cliente com este CPF está cadastrado. Preencha os dados abaixo para cadastrar.</p>
+                                    <h4 class="font-bold text-emerald-900 text-lg" id="cliente-nome">Cliente</h4>
+                                    <div class="text-sm text-emerald-900/80 mt-1" id="cliente-email">email@exemplo.com</div>
+                                    <div class="text-sm text-emerald-900/70 mt-1" id="cliente-cpf-display">CPF: ---</div>
                                 </div>
+                            </div>
+                            <button id="btn-limpar-cliente" type="button" class="px-4 py-2 rounded-xl bg-white border border-emerald-200 text-emerald-700 font-semibold hover:bg-emerald-100 transition">
+                                Trocar
+                            </button>
+                        </div>
+                    </div>
+
+                    <input type="hidden" id="cliente-id-selecionado" value="">
+
+                    <div class="flex items-center justify-end gap-3">
+                        <button id="btn-avancar" type="button" class="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                            Continuar
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resultado da Busca: Cliente Não Encontrado -->
+                <div id="cliente-nao-encontrado" class="hidden animate-slide-down">
+                    <div class="bg-amber-50 border-2 border-amber-200 rounded-xl p-5 mb-6">
+                        <div class="flex items-start gap-3">
+                            <div class="w-10 h-10 bg-amber-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                                <svg class="w-5 h-5 text-amber-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                    <path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path>
+                                    <path d="M12 9v4"></path>
+                                    <path d="M12 17h.01"></path>
+                                </svg>
+                            </div>
+                            <div>
+                                <h4 class="font-semibold text-amber-800">Cliente não encontrado</h4>
+                                <p class="text-sm text-amber-800/80">Não localizei este cliente. Você pode cadastrar abaixo.</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Formulário Novo Cliente -->
+                    <div class="space-y-4">
+                        <h4 class="font-semibold text-slate-700 flex items-center gap-2">
+                            <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                                <path d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 0 1 8 0z"></path>
+                                <path d="M6 21v-2a4 4 0 0 1 4-4h4"></path>
+                            </svg>
+                            Cadastrar Novo Cliente
+                        </h4>
+
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Nome Completo</label>
+                                <input id="novo-cliente-nome" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="Nome do cliente" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">CPF</label>
+                                <input id="novo-cliente-cpf" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="000.000.000-00" />
+                            </div>
+                            <div>
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Telefone</label>
+                                <input id="novo-cliente-telefone" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="(00) 00000-0000" />
+                            </div>
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-semibold text-slate-700 mb-2">Email</label>
+                                <input id="novo-cliente-email" type="email" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="email@exemplo.com" />
                             </div>
                         </div>
 
-                        <!-- Formulário Novo Cliente -->
-                        <div class="space-y-4">
-                            <h4 class="font-semibold text-slate-700 flex items-center gap-2">
-                                <svg class="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z"></path></svg>
-                                Cadastrar Novo Cliente
-                            </h4>
-
-                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-slate-600 mb-1">Nome Completo *</label>
-                                    <input
-                                        type="text"
-                                        id="novo-cliente-nome"
-                                        placeholder="Digite o nome completo"
-                                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                    >
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-600 mb-1">CPF *</label>
-                                    <input
-                                        type="text"
-                                        id="novo-cliente-cpf"
-                                        readonly
-                                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 bg-slate-50"
-                                    >
-                                </div>
-
-                                <div>
-                                    <label class="block text-sm font-medium text-slate-600 mb-1">Telefone</label>
-                                    <input
-                                        type="text"
-                                        id="novo-cliente-telefone"
-                                        placeholder="(00) 00000-0000"
-                                        maxlength="15"
-                                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                    >
-                                </div>
-
-                                <div class="md:col-span-2">
-                                    <label class="block text-sm font-medium text-slate-600 mb-1">Email *</label>
-                                    <input
-                                        type="email"
-                                        id="novo-cliente-email"
-                                        placeholder="cliente@email.com"
-                                        class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                    >
-                                    <p class="text-xs text-slate-400 mt-1">O cliente usará este email para receber o código de acesso.</p>
-                                </div>
-                            </div>
-
-                            <button type="button" onclick="cadastrarEAvancar()" id="btn-cadastrar-cliente" class="w-full py-4 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg shadow-blue-500/30 transition-all flex items-center justify-center gap-2 mt-4">
+                        <div class="flex items-center justify-end gap-3">
+                            <button id="btn-cancelar-novo-cliente" type="button" class="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-all">
+                                Cancelar
+                            </button>
+                            <button id="btn-cadastrar-novo-cliente" type="button" class="px-6 py-3 rounded-xl bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
                                 Cadastrar e Continuar
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                             </button>
                         </div>
                     </div>
+                </div>
 
-                    <!-- Opção: Pular cadastro de cliente -->
-                    <div id="opcao-pular" class="mt-6 pt-6 border-t border-slate-100 text-center">
-                        <button type="button" onclick="pularCadastroCliente()" class="text-slate-500 hover:text-slate-700 text-sm font-medium transition-colors">
-                            Continuar sem vincular cliente →
+            </div>
+        </div>
+
+        <!-- Conteúdo Etapa 2 -->
+        <div id="step2-content" class="hidden animate-fadeIn">
+            <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6">
+                <div class="flex items-center gap-3 mb-6">
+                    <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center">
+                        <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+                            <path d="M9 12h6"></path>
+                            <path d="M9 16h6"></path>
+                            <path d="M7 20h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2H9l-2 2H7a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2z"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="text-lg font-bold text-slate-900">Dados do Processo</h3>
+                        <p class="text-slate-500 text-sm">Preencha as informações do processo</p>
+                    </div>
+                </div>
+
+                <form id="form-processo" class="space-y-5">
+                    <input type="hidden" id="cliente-id" value="">
+
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Número do Processo</label>
+                            <input id="numero-processo" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="0000000-00.0000.0.00.0000" required>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Título / Assunto</label>
+                            <input id="titulo-processo" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="Ex: Aposentadoria / Revisão / etc" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Órgão</label>
+                            <input id="orgao-processo" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="Ex: TJRN / TRF / etc" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Data de Ajuizamento</label>
+                            <input id="data-ajuizamento" type="text" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="dd/mm/aaaa" required>
+                        </div>
+
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-semibold text-slate-700 mb-2">Observações</label>
+                            <textarea id="observacoes" rows="4" class="w-full px-4 py-3 border border-slate-200 rounded-xl bg-white focus:outline-none focus:border-blue-500 input-focus transition-all" placeholder="Observações iniciais (opcional)"></textarea>
+                        </div>
+                    </div>
+
+                    <div class="flex items-center justify-between gap-3 pt-2">
+                        <button id="btn-voltar" type="button" class="px-6 py-3 rounded-xl bg-white border border-slate-200 text-slate-700 font-semibold hover:bg-slate-50 transition-all">
+                            Voltar
+                        </button>
+                        <button id="btn-salvar" type="submit" class="px-6 py-3 rounded-xl bg-emerald-600 text-white font-semibold hover:bg-emerald-700 transition-all">
+                            Salvar Processo
                         </button>
                     </div>
-                </div>
+                </form>
             </div>
+        </div>
 
-            <!-- Step 2: Dados do Processo -->
-            <div id="step2-content" class="hidden">
-                <div class="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6 animate-fade-in">
-                    <!-- Cliente Selecionado (resumo) -->
-                    <div id="resumo-cliente" class="hidden mb-6 pb-6 border-b border-slate-100">
-                        <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
-                                    <svg class="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                </div>
-                                <div>
-                                    <p class="text-xs text-green-600 font-medium">Cliente vinculado</p>
-                                    <p class="font-semibold text-slate-800" id="resumo-cliente-nome">-</p>
-                                </div>
-                            </div>
-                            <button type="button" onclick="voltarParaCliente()" class="text-blue-600 hover:text-blue-800 text-sm font-medium">Alterar</button>
-                        </div>
-                    </div>
+    </main>
+</div>
 
-                    <div class="flex items-center gap-3 mb-6">
-                        <div class="w-12 h-12 bg-indigo-100 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                            </svg>
-                        </div>
-                        <div>
-                            <h3 class="text-lg font-bold text-slate-800">Dados do Processo</h3>
-                            <p class="text-sm text-slate-500">Preencha as informações do processo</p>
-                        </div>
-                    </div>
+<!-- JS do Projeto -->
+<script src="./js/config.js"></script>
+<script src="./js/utils.js"></script>
+<script src="./js/api.js"></script>
+<script src="./js/auth.js"></script>
 
-                    <form id="form-processo" class="space-y-5">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                            <!-- Número do Processo -->
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Número do Processo *</label>
-                                <input
-                                    type="text"
-                                    id="numero_processo"
-                                    required
-                                    placeholder="0000000-00.0000.0.00.0000"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                            </div>
+<script>
+    // =========================================================================
+    // ESTADO
+    // =========================================================================
+    let clienteSelecionado = null;
 
-                            <!-- Tipo do Processo -->
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Tipo / Natureza *</label>
-                                <select
-                                    id="tipo"
-                                    required
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 focus:outline-none focus:border-blue-500 input-focus transition-all bg-white"
-                                >
-                                    <option value="">Selecione o tipo</option>
-                                    <option value="APOSENTADORIA">Aposentadoria</option>
-                                    <option value="PENSÃO">Pensão</option>
-                                    <option value="REVISÃO DE BENEFÍCIO">Revisão de Benefício</option>
-                                    <option value="COMPENSAÇÃO PREVIDENCIÁRIA">Compensação Previdenciária</option>
-                                    <option value="MANDADO DE SEGURANÇA">Mandado de Segurança</option>
-                                    <option value="AÇÃO ORDINÁRIA">Ação Ordinária</option>
-                                    <option value="RECURSO">Recurso</option>
-                                    <option value="OUTROS">Outros</option>
-                                </select>
-                            </div>
+    // cache local (lista de clientes para sugestões)
+    let listaClientesCache = [];
+    let clientesById = {};
 
-                            <!-- Campo Outros (Condicional) -->
-                            <div id="div-tipo-outro" class="md:col-span-2 hidden">
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Especifique o Tipo *</label>
-                                <input
-                                    type="text"
-                                    id="tipo_outro"
-                                    placeholder="Digite o tipo do processo"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                            </div>
+    // A chave do cache segue o padrão do API.fetchWithCache: action + '_' + JSON.stringify(params)
+    const CLIENTES_CACHE_KEY = `listarClientes_${JSON.stringify({})}`;
 
-                            <!-- Parte / Interessado -->
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Parte / Interessado *</label>
-                                <input
-                                    type="text"
-                                    id="parte_nome"
-                                    required
-                                    placeholder="Nome da parte interessada"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                            </div>
+    // Sincronização entre abas
+    const SYNC_KEY = 'rpps_clientes_last_update';
+    const SYNC_CHANNEL = 'rpps_juridico_sync';
+    let bc = null;
 
-                            <!-- Data de Entrada -->
-                            <div>
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Data de Entrada</label>
-                                <input
-                                    type="text"
-                                    id="data_entrada"
-                                    placeholder="Selecione a data"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                            </div>
+    // =========================================================================
+    // HELPERS
+    // =========================================================================
+    function normalizarCPFFrontend(valor) {
+        const digits = String(valor || '').replace(/\D/g, '');
+        if (!digits) return '';
+        return digits.substring(0, 11).padStart(11, '0');
+    }
 
-                            <!-- Email do Interessado -->
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Email para Notificações</label>
-                                <input
-                                    type="email"
-                                    id="email_interessado"
-                                    placeholder="email@exemplo.com"
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all"
-                                >
-                                <p class="text-xs text-slate-400 mt-1">O cliente receberá notificações de movimentações neste email.</p>
-                            </div>
+    function normalizarTelefoneFrontend(valor) {
+        const digits = String(valor || '').replace(/\D/g, '');
+        return digits.substring(0, 11);
+    }
 
-                            <!-- Descrição -->
-                            <div class="md:col-span-2">
-                                <label class="block text-sm font-semibold text-slate-700 mb-2">Descrição / Observações</label>
-                                <textarea
-                                    id="descricao"
-                                    rows="4"
-                                    placeholder="Informações adicionais sobre o processo..."
-                                    class="w-full px-4 py-3 border-2 border-slate-200 rounded-xl text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 input-focus transition-all resize-none"
-                                ></textarea>
-                            </div>
-                        </div>
-
-                        <!-- Botões -->
-                        <div class="flex flex-col sm:flex-row gap-3 pt-4">
-                            <button type="button" onclick="voltarParaCliente()" class="flex-1 py-4 border-2 border-slate-200 text-slate-700 font-semibold rounded-xl hover:bg-slate-50 transition-all flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
-                                Voltar
-                            </button>
-                            <button type="submit" id="btn-salvar" class="flex-1 py-4 bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl shadow-lg shadow-green-500/30 transition-all flex items-center justify-center gap-2">
-                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                                Cadastrar Processo
-                            </button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-
-            <div class="h-20 md:h-0"></div> <!-- Espaçador Mobile -->
-
-        </main>
-    </div>
-
-    <!-- Bottom Navigation Bar (Mobile Only) -->
-    <div class="md:hidden fixed bottom-0 left-0 w-full bg-white border-t border-slate-200 flex justify-around py-3 pb-safe z-50">
-        <a href="dashboard.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Início</span>
-        </a>
-        <a href="processos.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Processos</span>
-        </a>
-        <a href="novo-processo.html" class="flex flex-col items-center text-blue-600">
-            <div class="relative">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            </div>
-            <span class="text-[10px] font-medium mt-1">Novo</span>
-        </a>
-        <a href="clientes.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Clientes</span>
-        </a>
-    </div>
-
-    <!-- Scripts de Infraestrutura -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-
-    <script>
-        // =====================================================================
-        // VARIÁVEIS GLOBAIS
-        // =====================================================================
-
-        let clienteSelecionado = null;
-        let clienteVinculado = false;
-        let listaClientesCache = [];
-        let clientesById = {};
-
-        // =====================================================================
-        // CACHE + SINCRONIZAÇÃO (Clientes <-> Novo Processo)
-        // =====================================================================
-
-        // Mesma chave que o API usa: action + '_' + JSON.stringify(params)
-        // Para listarClientes com params {}, fica exatamente "listarClientes_{}".
-        const CLIENTES_CACHE_KEY = `listarClientes_${JSON.stringify({})}`;
-        const CLIENTES_CACHE_TTL_MINUTES = 60;
-
-        // Sync entre abas (Clientes <-> Novo Processo)
-        const CLIENTES_SYNC_CHANNEL = 'rpps_juridico_sync';
-        const CLIENTES_SYNC_KEY = 'rpps_clientes_last_update';
-        let bcClientes = null;
-
-        function sanitizarClienteParaLista(c) {
-            if (!c) return null;
-            return {
-                id: c.id,
-                nome_completo: c.nome_completo || '',
-                cpf: c.cpf || '',
-                email: c.email || '',
-                telefone: c.telefone || '',
-                status: c.status || ''
-            };
+    function formatarCPFParaExibicao(cpf) {
+        const bruto = String(cpf || '').trim();
+        const digitos = bruto.replace(/\D/g, '');
+        if (digitos.length === 11) {
+            return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
         }
+        // Quando vier mascarado da API (***.***.***-**) preserva visual
+        return bruto || '-';
+    }
 
-        function rebuildClientesIndex() {
-            clientesById = {};
-            (listaClientesCache || []).forEach(function(c) {
-                if (c && c.id) clientesById[String(c.id)] = c;
-            });
-        }
+    // Escapa HTML para evitar injeção ao renderizar sugestões
+    function escapeHtml(text) {
+        return String(text || '')
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&#039;');
+    }
 
-        function salvarClientesNoCache() {
-            if (!Array.isArray(listaClientesCache)) return;
-            Utils.Cache.set(CLIENTES_CACHE_KEY, listaClientesCache, CLIENTES_CACHE_TTL_MINUTES);
-        }
-
-        function sincronizarClientesDoCache() {
-            const cached = Utils.Cache.get(CLIENTES_CACHE_KEY);
-            if (Array.isArray(cached) && cached.length) {
-                listaClientesCache = cached;
-                rebuildClientesIndex();
-                popularDatalistClientes();
-                renderSugestoesClientes();
+    function rebuildClientesIndex() {
+        clientesById = {};
+        (listaClientesCache || []).forEach(function(c) {
+            if (c && c.id != null) {
+                clientesById[String(c.id)] = c;
             }
+        });
+    }
+
+    function upsertClienteNaSelecaoRapida(cliente) {
+        if (!cliente || !cliente.id) return;
+
+        const id = String(cliente.id);
+        const idx = (listaClientesCache || []).findIndex(function(c) { return String(c.id) === id; });
+
+        if (idx >= 0) {
+            listaClientesCache[idx] = Object.assign({}, listaClientesCache[idx], cliente);
+        } else {
+            listaClientesCache.push(cliente);
         }
 
-        function broadcastClientesUpdated() {
-            try { localStorage.setItem(CLIENTES_SYNC_KEY, String(Date.now())); } catch (e) {}
-            try {
-                if (bcClientes) bcClientes.postMessage({ type: 'clientes_updated', ts: Date.now() });
-            } catch (e) {}
-        }
+        // Ordena por nome
+        listaClientesCache.sort(function(a, b) {
+            const an = String(a.nome_completo || '').toLowerCase();
+            const bn = String(b.nome_completo || '').toLowerCase();
+            return an.localeCompare(bn);
+        });
 
-        function initClientesSync() {
-            // BroadcastChannel (se disponível)
-            try {
-                if ('BroadcastChannel' in window) {
-                    bcClientes = new BroadcastChannel(CLIENTES_SYNC_CHANNEL);
-                    bcClientes.onmessage = function(ev) {
-                        const msg = ev && ev.data ? ev.data : null;
-                        if (!msg || msg.type !== 'clientes_updated') return;
-                        sincronizarClientesDoCache();
-                    };
-                }
-            } catch (e) {
-                bcClientes = null;
-            }
+        rebuildClientesIndex();
 
-            // Storage (sempre)
-            window.addEventListener('storage', function(e) {
-                if (!e) return;
-                if (e.key === CLIENTES_CACHE_KEY || e.key === CLIENTES_SYNC_KEY) {
-                    sincronizarClientesDoCache();
-                }
-            });
-        }
+        // Atualiza cache local (para ajudar outras abas)
+        try {
+            Utils.Cache.set(CLIENTES_CACHE_KEY, listaClientesCache, 60);
+        } catch (e) {}
 
-        function upsertClienteNaSelecaoRapida(cliente) {
-            const c = sanitizarClienteParaLista(cliente);
-            if (!c || !c.id) return;
+        // Atualiza datalist
+        preencherDatalistClientes();
+    }
 
-            const idStr = String(c.id);
+    function preencherDatalistClientes() {
+        const dl = document.getElementById('clientes-lista');
+        if (!dl) return;
 
-            // Atualiza/inclui
-            const idx = (listaClientesCache || []).findIndex(function(x) {
-                return String((x && x.id) || '') === idStr;
-            });
+        dl.innerHTML = (listaClientesCache || []).slice(0, 200).map(function(c) {
+            const label = `${c.nome_completo || '-'} | ${formatarCPFParaExibicao(c.cpf || '-') } | ${c.email || '-'}`;
+            return `<option value="${escapeHtml(label)}"></option>`;
+        }).join('');
+    }
 
-            if (idx >= 0) listaClientesCache[idx] = c;
-            else listaClientesCache.unshift(c);
+    // =========================================================================
+    // INICIALIZAÇÃO
+    // =========================================================================
+    document.addEventListener('DOMContentLoaded', function() {
+        // Proteção de rota
+        if (!Auth.protectRoute()) return;
 
-            // Recria índice e atualiza UI
-            rebuildClientesIndex();
-            popularDatalistClientes();
-            renderSugestoesClientes();
+        // UI do usuário
+        Auth.updateUserInfoUI();
 
-            // Salva cache e avisa outras abas
-            salvarClientesNoCache();
-            broadcastClientesUpdated();
-        }
-
-
-        function normalizarCPFFrontend(valor) {
-            const digitos = String(valor || '').replace(/\D/g, '');
-            if (!digitos) return '';
-            return digitos.padStart(11, '0').slice(-11);
-        }
-
-        function formatarCPFParaExibicao(cpf) {
-            const bruto = String(cpf || '').trim();
-            const digitos = bruto.replace(/\D/g, '');
-            if (digitos.length === 11) {
-                return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-            }
-            // Quando vier mascarado da API (***.***.***-**) preserva visual
-            return bruto || '-';
-        }
-
-        // =====================================================================
-        // INICIALIZAÇÃO
-        // =====================================================================
-
-        document.addEventListener('DOMContentLoaded', function() {
-            // 1. Proteção de Rota
-            if (!Auth.protectRoute()) return;
-
-            // 2. UI do Usuário
-            Auth.updateUserInfoUI();
-            const user = Auth.getUser();
-            if (user && user.nome) {
-                const initialsEl = document.getElementById('user-initials');
-                if (initialsEl) initialsEl.textContent = user.nome.substring(0, 1).toUpperCase();
-            }
-
-            // 3. Logout Desktop
-            const btnLogout = document.getElementById('desktop-logout-btn');
-            if (btnLogout) {
-                btnLogout.addEventListener('click', () => { if (confirm('Sair?')) Auth.logout(); });
-            }
-
-            // 4. Inicializa datepicker
-            flatpickr("#data_entrada", {
+        // Flatpickr
+        if (window.flatpickr) {
+            flatpickr("#data-ajuizamento", {
                 locale: "pt",
                 dateFormat: "d/m/Y",
-                defaultDate: new Date()
+                allowInput: true
             });
+        }
 
-            // 5. Máscaras
-            aplicarMascaras();
-
-            // 6. Lógica do campo "Outros"
-            const tipoSelect = document.getElementById('tipo');
-            const divOutros = document.getElementById('div-tipo-outro');
-            const inputOutros = document.getElementById('tipo_outro');
-
-            if (tipoSelect && divOutros && inputOutros) {
-                tipoSelect.addEventListener('change', function() {
-                    if (this.value === 'OUTROS') {
-                        divOutros.classList.remove('hidden');
-                        inputOutros.setAttribute('required', 'true');
-                        inputOutros.focus();
-                    } else {
-                        divOutros.classList.add('hidden');
-                        inputOutros.removeAttribute('required');
-                        inputOutros.value = '';
-                    }
-                });
-            }
-
-            // 7. Eventos
-            document.getElementById('btn-buscar-cpf').addEventListener('click', buscarCliente);
-            document.getElementById('btn-usar-cliente-rapido').addEventListener('click', selecionarClienteRapido);
-            document.getElementById('form-processo').addEventListener('submit', salvarProcesso);
-            initClientesSync();
-            carregarClientesRapido();
-
-            // Enter no campo CPF
-            document.getElementById('cpf-busca').addEventListener('keypress', function(e) {
-                if (e.key === 'Enter') {
-                    e.preventDefault();
-                    buscarCliente();
-                }
+        // Eventos principais
+        const logout = document.getElementById('desktop-logout-btn');
+        if (logout) {
+            logout.addEventListener('click', function() {
+                if (confirm('Sair do sistema?')) Auth.logout();
             });
+        }
 
-            const inputRapido = document.getElementById('cliente-busca-rapida');
+        const btnUsarRapido = document.getElementById('btn-usar-cliente-rapido');
+        if (btnUsarRapido) btnUsarRapido.addEventListener('click', selecionarClienteRapido);
+
+        const btnAvancar = document.getElementById('btn-avancar');
+        if (btnAvancar) btnAvancar.addEventListener('click', avancarParaProcesso);
+
+        const btnVoltar = document.getElementById('btn-voltar');
+        if (btnVoltar) btnVoltar.addEventListener('click', voltarParaCliente);
+
+        const btnLimpar = document.getElementById('btn-limpar-cliente');
+        if (btnLimpar) btnLimpar.addEventListener('click', limparCliente);
+
+        const btnCancelarNovo = document.getElementById('btn-cancelar-novo-cliente');
+        if (btnCancelarNovo) btnCancelarNovo.addEventListener('click', limparFormNovoCliente);
+
+        const btnCadastrarNovo = document.getElementById('btn-cadastrar-novo-cliente');
+        if (btnCadastrarNovo) btnCadastrarNovo.addEventListener('click', cadastrarEAvancar);
+
+        const formProc = document.getElementById('form-processo');
+        if (formProc) formProc.addEventListener('submit', salvarProcesso);
+
+        // Máscaras do form novo cliente
+        const cpfNovo = document.getElementById('novo-cliente-cpf');
+        if (cpfNovo) {
+            cpfNovo.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '');
+                if (value.length > 11) value = value.substring(0, 11);
+                if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+                else if (value.length > 6) value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+                else if (value.length > 3) value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+                e.target.value = value;
+            });
+        }
+
+        const telNovo = document.getElementById('novo-cliente-telefone');
+        if (telNovo) {
+            telNovo.addEventListener('input', function(e) {
+                let value = e.target.value.replace(/\D/g, '').substring(0, 11);
+                if (value.length > 6) value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+                else if (value.length > 2) value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+                e.target.value = value;
+            });
+        }
+
+        // Busca: eventos do input único
+        const inputRapido = document.getElementById('cliente-busca-rapida');
+        if (inputRapido) {
             inputRapido.addEventListener('keypress', function(e) {
                 if (e.key === 'Enter') {
                     e.preventDefault();
@@ -747,603 +529,584 @@
             });
             inputRapido.addEventListener('input', renderSugestoesClientes);
             inputRapido.addEventListener('focus', renderSugestoesClientes);
-            document.addEventListener('click', function(e) {
-                const box = document.getElementById('clientes-sugestoes');
-                const wrap = document.getElementById('cliente-busca-rapida').parentElement;
-                if (box && wrap && !wrap.contains(e.target)) box.classList.add('hidden');
-            });
-        });
-
-        // =====================================================================
-        // SELEÇÃO RÁPIDA DE CLIENTES CADASTRADOS
-        // =====================================================================
-        async function carregarClientesRapido() {
-            try {
-                // 0) Cache imediato (deixa a tela rápida)
-                const cached = Utils.Cache.get(CLIENTES_CACHE_KEY);
-                if (Array.isArray(cached) && cached.length) {
-                    listaClientesCache = cached;
-                    rebuildClientesIndex();
-                    popularDatalistClientes();
-                    renderSugestoesClientes();
-                }
-
-                // 1) Rede em background (atualiza sem travar)
-                const rede = await API.call('listarClientes', {}, 'POST', true);
-                if (Array.isArray(rede)) {
-                    listaClientesCache = rede;
-                    rebuildClientesIndex();
-                    popularDatalistClientes();
-                    renderSugestoesClientes();
-                    salvarClientesNoCache();
-                    broadcastClientesUpdated();
-                }
-            } catch (e) {
-                console.warn('Não foi possível carregar clientes para seleção rápida:', e.message || e);
-            }
-        }
-        function popularDatalistClientes() {
-            const datalist = document.getElementById('clientes-lista');
-            if (!datalist) return;
-
-            datalist.innerHTML = '';
-
-            // Limite para evitar “lag” quando existir MUITOS clientes
-            const max = 500;
-            const lista = (listaClientesCache || []).slice(0, max);
-
-            lista.forEach(function(c) {
-                const opt = document.createElement('option');
-                const nome = c.nome_completo || '';
-                const cpf = c.cpf || '';
-                const email = c.email || '';
-                opt.value = nome + ' | ' + cpf + ' | ' + email;
-                datalist.appendChild(opt);
-            });
         }
 
-        function filtrarClientesRapido(termo) {
-            const t = String(termo || '').toLowerCase().trim();
-            const tCpf = t.replace(/\D/g, '');
-            if (!t) return listaClientesCache.slice(0, 8);
-            return listaClientesCache.filter(function(c) {
-                const nome = String(c.nome_completo || '').toLowerCase();
-                const email = String(c.email || '').toLowerCase();
-                const cpfMask = String(c.cpf || '').toLowerCase();
-                const cpfDigits = cpfMask.replace(/\D/g, '');
-                return nome.includes(t) || email.includes(t) || cpfMask.includes(t) || (tCpf && cpfDigits.includes(tCpf));
-            }).slice(0, 8);
-        }
-
-        function renderSugestoesClientes() {
+        document.addEventListener('click', function(e) {
             const box = document.getElementById('clientes-sugestoes');
             const input = document.getElementById('cliente-busca-rapida');
             if (!box || !input) return;
+            const wrap = input.parentElement;
+            if (wrap && !wrap.contains(e.target)) box.classList.add('hidden');
+        });
 
-            const termo = input.value || '';
-            const itens = filtrarClientesRapido(termo);
+        // Sincronização + carga
+        initClientesSync();
+        carregarClientesRapido();
+    });
 
-            if (!itens.length) {
-                box.innerHTML = '<div class="px-3 py-2 text-sm text-slate-400">Nenhum cliente encontrado.</div>';
-                box.classList.remove('hidden');
-                return;
-            }
-
-            box.innerHTML = itens.map(function(c) {
-                const nome = escapeHtml(c.nome_completo || '-');
-                const cpf = escapeHtml(c.cpf || '-');
-                const email = escapeHtml(c.email || '-');
-                const valor = escapeHtml((c.nome_completo || '') + ' | ' + (c.cpf || '') + ' | ' + (c.email || ''));
-                const id = escapeHtml(String(c.id || ''));
-                return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0" data-cliente="' + valor + '" data-id="' + id + '">' +
-                       '<div class="text-sm font-medium text-slate-700">' + nome + '</div>' +
-                       '<div class="text-xs text-slate-500">' + cpf + ' · ' + email + '</div>' +
-                       '</button>';
-            }).join('');
-
-            box.classList.remove('hidden');
-            box.querySelectorAll('[data-cliente]').forEach(function(btn) {
-                btn.addEventListener('click', function() {
-                    input.value = this.getAttribute('data-cliente');
-                    box.classList.add('hidden');
-                    selecionarClienteRapido(this.getAttribute('data-id'));
-                });
-            });
-        }
-        async function selecionarClienteRapido(clienteIdForcado) {
-            const input = document.getElementById('cliente-busca-rapida');
-            const termoBruto = String(input.value || '').trim();
-            const termo = termoBruto.toLowerCase();
-
-            const btnUsar = document.getElementById('btn-usar-cliente-rapido');
-            if (btnUsar) {
-                btnUsar.classList.add('btn-loading');
-                btnUsar.disabled = true;
-            }
-
-            try {
-                if (!termoBruto && !clienteIdForcado) {
-                    Utils.showToast('Digite um cliente para selecionar.', 'warning');
-                    input.focus();
-                    return;
-                }
-
-                let cliente = null;
-
-                // 1) Clique direto na sugestão
-                if (clienteIdForcado) {
-                    cliente = clientesById[String(clienteIdForcado)] || null;
-                }
-
-                // 2) Tentativas: ID, CPF, Email, Nome
-                if (!cliente && termoBruto) {
-
-                    // ID direto
-                    if (/^\d+$/.test(termoBruto)) {
-                        cliente = clientesById[String(termoBruto)] || null;
+    // =========================================================================
+    // SINCRONIZAÇÃO CLIENTES (entre abas)
+    // =========================================================================
+    function initClientesSync() {
+        // BroadcastChannel
+        try {
+            if ('BroadcastChannel' in window) {
+                bc = new BroadcastChannel(SYNC_CHANNEL);
+                bc.onmessage = function(ev) {
+                    const msg = ev && ev.data ? ev.data : null;
+                    if (msg && msg.type === 'clientes_updated') {
+                        hidratarCacheClientes();
+                        carregarClientesRapido(true);
                     }
-
-                    // CPF (digits)
-                    if (!cliente) {
-                        const digits = termoBruto.replace(/\D/g, '');
-                        if (digits.length >= 6) {
-                            const candidatosCpf = (listaClientesCache || []).filter(function(c) {
-                                const cCpf = String(c.cpf || '').replace(/\D/g, '');
-                                return cCpf && cCpf.includes(digits);
-                            });
-
-                            if (candidatosCpf.length === 1) cliente = candidatosCpf[0];
-                            else if (candidatosCpf.length > 1) {
-                                Utils.showToast('Encontrei mais de 1 cliente com esse CPF. Refine a busca.', 'warning');
-                                renderSugestoesClientes();
-                                return;
-                            }
-                        }
-                    }
-
-                    // Email exato
-                    if (!cliente && termo.includes('@')) {
-                        const byEmail = (listaClientesCache || []).filter(function(c) {
-                            return String(c.email || '').toLowerCase() === termo;
-                        });
-
-                        if (byEmail.length === 1) cliente = byEmail[0];
-                        else if (byEmail.length > 1) {
-                            Utils.showToast('Encontrei mais de 1 cliente com esse email. Refine a busca.', 'warning');
-                            renderSugestoesClientes();
-                            return;
-                        }
-                    }
-
-                    // Nome contém
-                    if (!cliente && termo.length >= 3) {
-                        const byNome = (listaClientesCache || []).filter(function(c) {
-                            return String(c.nome_completo || '').toLowerCase().includes(termo);
-                        });
-
-                        if (byNome.length === 1) cliente = byNome[0];
-                        else if (byNome.length > 1) {
-                            Utils.showToast('Encontrei mais de 1 cliente com esse nome. Clique na sugestão desejada.', 'warning');
-                            renderSugestoesClientes();
-                            return;
-                        }
-                    }
-                }
-
-                if (!cliente) {
-                    Utils.showToast('Cliente não encontrado na lista. Use a busca por CPF abaixo.', 'warning');
-                    return;
-                }
-
-                // Esconde sugestões ao selecionar
-                const sug = document.getElementById('clientes-sugestoes');
-                if (sug) sug.classList.add('hidden');
-
-                // ✅ Mostra IMEDIATO (sem aguardar planilha)
-                mostrarClienteEncontrado(cliente);
-
-                const cpfInput = document.getElementById('cpf-busca');
-                if (cpfInput) cpfInput.value = formatarCPFParaExibicao(cliente.cpf);
-
-                // ✅ Busca dados completos em BACKGROUND (não trava)
-                if (cliente.id) {
-                    API.clientes.buscarPorId(cliente.id)
-                        .then(function(completo) {
-                            if (completo && completo.id) {
-                                upsertClienteNaSelecaoRapida(completo);
-
-                                // Se ainda for o mesmo selecionado, atualiza “por cima”
-                                if (clienteSelecionado && String(clienteSelecionado.id) === String(completo.id)) {
-                                    mostrarClienteEncontrado(completo);
-                                    if (cpfInput) cpfInput.value = formatarCPFParaExibicao(completo.cpf);
-                                }
-                            }
-                        })
-                        .catch(function(err) {
-                            console.warn('Falha ao buscar cliente completo (background):', err);
-                        });
-                }
-
-            } finally {
-                if (btnUsar) {
-                    btnUsar.classList.remove('btn-loading');
-                    btnUsar.disabled = false;
-                }
-            }
-        }
-
-        // =====================================================================
-        // MÁSCARAS
-        // =====================================================================
-
-        function aplicarMascaras() {
-            // CPF
-            document.getElementById('cpf-busca').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 11) value = value.substring(0, 11);
-                if (value.length > 9) {
-                    value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-                } else if (value.length > 6) {
-                    value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-                } else if (value.length > 3) {
-                    value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-                }
-                e.target.value = value;
-            });
-
-            // Telefone
-            document.getElementById('novo-cliente-telefone').addEventListener('input', function(e) {
-                let value = e.target.value.replace(/\D/g, '');
-                if (value.length > 11) value = value.substring(0, 11);
-                if (value.length > 6) {
-                    value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-                } else if (value.length > 2) {
-                    value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-                }
-                e.target.value = value;
-            });
-        }
-
-        // =====================================================================
-        // BUSCA DE CLIENTE
-        // =====================================================================
-
-        async function buscarCliente() {
-            const cpfInput = document.getElementById('cpf-busca');
-            const cpf = normalizarCPFFrontend(cpfInput.value);
-
-            if (cpf.length !== 11) {
-                Utils.showToast('Digite um CPF válido com 11 dígitos.', 'warning');
-                cpfInput.focus();
-                return;
-            }
-
-            const btn = document.getElementById('btn-buscar-cpf');
-            btn.classList.add('btn-loading');
-            btn.disabled = true;
-
-            try {
-                // Chama a API usando o padrão do sistema
-                const resultado = await API.call('buscarClientePorCPF', { cpf: cpf }, 'POST', true);
-
-                // Esconde os dois estados
-                document.getElementById('cliente-encontrado').classList.add('hidden');
-                document.getElementById('cliente-nao-encontrado').classList.add('hidden');
-
-                if (resultado) {
-                    // Cliente encontrado!
-                    mostrarClienteEncontrado(resultado);
-                } else {
-                    // Cliente não encontrado
-                    mostrarFormNovoCliente(cpf);
-                }
-
-            } catch (error) {
-                console.error('Erro ao buscar cliente:', error);
-                // Se erro for "não encontrado", mostra formulário
-                if (error.message && error.message.toLowerCase().includes('não encontrado')) {
-                    mostrarFormNovoCliente(cpf);
-                } else {
-                    Utils.showToast(error.message || 'Erro ao buscar cliente.', 'error');
-                }
-            } finally {
-                btn.classList.remove('btn-loading');
-                btn.disabled = false;
-            }
-        }
-
-        // =====================================================================
-        // EXIBIÇÃO DE RESULTADOS
-        // =====================================================================
-
-        function mostrarClienteEncontrado(cliente) {
-            clienteSelecionado = cliente;
-
-            // Formata CPF para exibição (respeita CPF mascarado e evita zeros indevidos)
-            const cpfDisplay = formatarCPFParaExibicao(cliente.cpf);
-
-            document.getElementById('cliente-iniciais').textContent = cliente.nome_completo ? cliente.nome_completo.charAt(0).toUpperCase() : 'C';
-            document.getElementById('cliente-nome').textContent = cliente.nome_completo;
-            document.getElementById('cliente-email').textContent = cliente.email || '-';
-            document.getElementById('cliente-cpf-display').textContent = 'CPF: ' + cpfDisplay;
-            document.getElementById('cliente-id-selecionado').value = cliente.id;
-
-            document.getElementById('cliente-encontrado').classList.remove('hidden');
-            document.getElementById('cliente-nao-encontrado').classList.add('hidden');
-            document.getElementById('opcao-pular').classList.add('hidden');
-
-            Utils.showToast('Cliente encontrado!', 'success');
-        }
-
-        function mostrarFormNovoCliente(cpf) {
-            // Formata o CPF para exibição
-            let cpfFormatado = cpf.padStart(11, '0');
-            cpfFormatado = cpfFormatado.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
-
-            document.getElementById('novo-cliente-cpf').value = cpfFormatado;
-
-            document.getElementById('cliente-nao-encontrado').classList.remove('hidden');
-            document.getElementById('cliente-encontrado').classList.add('hidden');
-            document.getElementById('opcao-pular').classList.add('hidden');
-
-            // Foca no nome
-            setTimeout(() => {
-                document.getElementById('novo-cliente-nome').focus();
-            }, 300);
-        }
-
-        function limparCliente() {
-            clienteSelecionado = null;
-            document.getElementById('cpf-busca').value = '';
-            document.getElementById('cliente-encontrado').classList.add('hidden');
-            document.getElementById('cliente-nao-encontrado').classList.add('hidden');
-            document.getElementById('opcao-pular').classList.remove('hidden');
-            document.getElementById('cpf-busca').focus();
-        }
-
-        // =====================================================================
-        // CADASTRO DE NOVO CLIENTE
-        // =====================================================================
-
-        async function cadastrarEAvancar() {
-            const nome = document.getElementById('novo-cliente-nome').value.trim();
-            const cpf = normalizarCPFFrontend(document.getElementById('novo-cliente-cpf').value);
-            const email = document.getElementById('novo-cliente-email').value.trim().toLowerCase();
-            const telefone = document.getElementById('novo-cliente-telefone').value.replace(/\D/g, '');
-
-            // Validações
-            if (!nome) {
-                Utils.showToast('Digite o nome do cliente.', 'warning');
-                document.getElementById('novo-cliente-nome').focus();
-                return;
-            }
-
-            if (!email) {
-                Utils.showToast('Digite o email do cliente.', 'warning');
-                document.getElementById('novo-cliente-email').focus();
-                return;
-            }
-
-            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-                Utils.showToast('Digite um email válido.', 'warning');
-                document.getElementById('novo-cliente-email').focus();
-                return;
-            }
-
-            const btn = document.getElementById('btn-cadastrar-cliente');
-            btn.classList.add('btn-loading');
-            btn.disabled = true;
-
-            try {
-                const resultado = await API.call('cadastrarCliente', {
-                    nome_completo: nome,
-                    cpf: cpf,
-                    email: email,
-                    telefone: telefone
-                });
-
-                clienteSelecionado = resultado;
-                upsertClienteNaSelecaoRapida(resultado);
-                Utils.showToast('Cliente cadastrado com sucesso!', 'success');
-
-                // Avança para o passo 2
-                setTimeout(() => {
-                    avancarParaProcesso();
-                }, 500);
-
-            } catch (error) {
-                console.error('Erro ao cadastrar cliente:', error);
-                Utils.showToast(error.message || 'Erro ao cadastrar cliente.', 'error');
-            } finally {
-                btn.classList.remove('btn-loading');
-                btn.disabled = false;
-            }
-        }
-
-        // =====================================================================
-        // NAVEGAÇÃO ENTRE PASSOS
-        // =====================================================================
-
-        function avancarParaProcesso() {
-            clienteVinculado = true;
-
-            // Atualiza stepper
-            document.getElementById('step1-indicator').classList.remove('step-active');
-            document.getElementById('step1-indicator').classList.add('step-complete');
-            document.getElementById('step1-indicator').innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-
-            document.getElementById('step2-indicator').classList.remove('step-pending');
-            document.getElementById('step2-indicator').classList.add('step-active');
-
-            document.getElementById('progress-bar').style.width = '100%';
-
-            // Mostra resumo do cliente
-            if (clienteSelecionado) {
-                document.getElementById('resumo-cliente').classList.remove('hidden');
-                document.getElementById('resumo-cliente-nome').textContent = clienteSelecionado.nome_completo || clienteSelecionado.nome;
-
-                // Preenche campos automaticamente
-                document.getElementById('parte_nome').value = clienteSelecionado.nome_completo || clienteSelecionado.nome || '';
-                document.getElementById('email_interessado').value = clienteSelecionado.email || '';
-            }
-
-            // Troca de tela
-            document.getElementById('step1-content').classList.add('hidden');
-            document.getElementById('step2-content').classList.remove('hidden');
-
-            // Scroll para o topo
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function pularCadastroCliente() {
-            clienteSelecionado = null;
-            clienteVinculado = false;
-
-            // Atualiza stepper
-            document.getElementById('step1-indicator').classList.remove('step-active');
-            document.getElementById('step1-indicator').classList.add('step-complete');
-            document.getElementById('step1-indicator').innerHTML = '<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-
-            document.getElementById('step2-indicator').classList.remove('step-pending');
-            document.getElementById('step2-indicator').classList.add('step-active');
-
-            document.getElementById('progress-bar').style.width = '100%';
-
-            // Esconde resumo do cliente
-            document.getElementById('resumo-cliente').classList.add('hidden');
-
-            // Troca de tela
-            document.getElementById('step1-content').classList.add('hidden');
-            document.getElementById('step2-content').classList.remove('hidden');
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        function voltarParaCliente() {
-            // Atualiza stepper
-            document.getElementById('step1-indicator').classList.remove('step-complete');
-            document.getElementById('step1-indicator').classList.add('step-active');
-            document.getElementById('step1-indicator').textContent = '1';
-
-            document.getElementById('step2-indicator').classList.remove('step-active');
-            document.getElementById('step2-indicator').classList.add('step-pending');
-
-            document.getElementById('progress-bar').style.width = '0%';
-
-            // Troca de tela
-            document.getElementById('step2-content').classList.add('hidden');
-            document.getElementById('step1-content').classList.remove('hidden');
-
-            window.scrollTo({ top: 0, behavior: 'smooth' });
-        }
-
-        // =====================================================================
-        // SALVAR PROCESSO
-        // =====================================================================
-
-        async function salvarProcesso(e) {
-            e.preventDefault();
-
-            const numero = document.getElementById('numero_processo').value.trim();
-            const tipoSelect = document.getElementById('tipo');
-            const inputOutros = document.getElementById('tipo_outro');
-            const parte = document.getElementById('parte_nome').value.trim();
-            const dataEntrada = document.getElementById('data_entrada').value;
-            const email = document.getElementById('email_interessado').value.trim();
-            const descricao = document.getElementById('descricao').value.trim();
-
-            // Lógica para definir o Tipo final
-            let tipoFinal = tipoSelect.value;
-            if (tipoFinal === 'OUTROS') {
-                tipoFinal = inputOutros.value.trim().toUpperCase();
-                if (!tipoFinal) {
-                    Utils.showToast('Por favor, especifique o tipo do processo.', 'warning');
-                    inputOutros.focus();
-                    return;
-                }
-            }
-
-            // Validações
-            if (!numero) {
-                Utils.showToast('Digite o número do processo.', 'warning');
-                document.getElementById('numero_processo').focus();
-                return;
-            }
-            if (!tipoFinal) {
-                Utils.showToast('Selecione o tipo do processo.', 'warning');
-                return;
-            }
-            if (!parte) {
-                Utils.showToast('Digite o nome da parte interessada.', 'warning');
-                document.getElementById('parte_nome').focus();
-                return;
-            }
-
-            // Loader customizado
-            Utils.showLoading("Criando pasta digital...", "database");
-
-            try {
-                // Monta payload
-                const payload = {
-                    numero_processo: numero,
-                    tipo: tipoFinal,
-                    parte_nome: parte,
-                    data_entrada: dataEntrada,
-                    email_interessado: email.toLowerCase(),
-                    descricao: descricao
                 };
+            }
+        } catch(e) {}
 
-                // Se tiver cliente selecionado, adiciona CPF ao payload
-                if (clienteSelecionado) {
-                    if (clienteSelecionado.id) {
-                        payload.cliente_id = String(clienteSelecionado.id).trim();
-                    }
+        // Storage event
+        window.addEventListener('storage', function(e) {
+            if (e.key === SYNC_KEY) {
+                hidratarCacheClientes();
+                carregarClientesRapido(true);
+            }
+        });
 
-                    const cpfNorm = normalizarCPFFrontend(clienteSelecionado.cpf);
-                    if (cpfNorm.length === 11) {
-                        payload.cpf_cliente = cpfNorm;
-                    }
+        // Hidrata no load
+        hidratarCacheClientes();
+    }
 
-                    payload.nome_cliente = (clienteSelecionado.nome_completo || clienteSelecionado.nome || '').trim();
-                    payload.email_cliente = (clienteSelecionado.email || '').trim().toLowerCase();
-                    payload.telefone_cliente = String(clienteSelecionado.telefone || '').replace(/\D/g, '');
+    function broadcastClientesAtualizados() {
+        try { localStorage.setItem(SYNC_KEY, String(Date.now())); } catch(e) {}
+        try { if (bc) bc.postMessage({ type: 'clientes_updated', ts: Date.now() }); } catch(e) {}
+    }
+
+    function hidratarCacheClientes() {
+        try {
+            const cached = Utils.Cache.get(CLIENTES_CACHE_KEY);
+            if (Array.isArray(cached) && cached.length) {
+                listaClientesCache = cached;
+                rebuildClientesIndex();
+                preencherDatalistClientes();
+            }
+        } catch(e) {}
+    }
+
+    // =========================================================================
+    // CARREGAR CLIENTES RÁPIDO (SWR)
+    // =========================================================================
+    function carregarClientesRapido(forceSilent) {
+        API.clientes.listar(function(lista, source) {
+            const data = Array.isArray(lista) ? lista : [];
+            listaClientesCache = data;
+            rebuildClientesIndex();
+            preencherDatalistClientes();
+
+            // atualiza cache com TTL maior (clientes)
+            try { Utils.Cache.set(CLIENTES_CACHE_KEY, data, 60); } catch(e) {}
+
+            if (source === 'network') {
+                broadcastClientesAtualizados();
+            }
+        }, !!forceSilent);
+    }
+
+    // =========================================================================
+    // BUSCA/SELEÇÃO ÚNICA (nome/email/cpf)
+    // =========================================================================
+    function filtrarClientesRapido(termo) {
+        const t = String(termo || '').toLowerCase().trim();
+        const tCpf = t.replace(/\D/g, '');
+        if (!t) return listaClientesCache.slice(0, 8);
+
+        // tokens (para busca mais inteligente por nome)
+        const tokens = t.split(/\s+/).filter(Boolean);
+
+        return (listaClientesCache || []).filter(function(c) {
+            const nome = String(c.nome_completo || '').toLowerCase();
+            const email = String(c.email || '').toLowerCase();
+            const cpfMask = String(c.cpf || '').toLowerCase();
+            const cpfDigits = cpfMask.replace(/\D/g, '');
+
+            // match por tokens no nome
+            const nomeOk = tokens.length ? tokens.every(function(tok) { return nome.includes(tok); }) : false;
+
+            return (
+                nomeOk ||
+                nome.includes(t) ||
+                email.includes(t) ||
+                cpfMask.includes(t) ||
+                (tCpf && cpfDigits.includes(tCpf))
+            );
+        }).slice(0, 8);
+    }
+
+    function renderSugestoesClientes() {
+        const box = document.getElementById('clientes-sugestoes');
+        const input = document.getElementById('cliente-busca-rapida');
+        if (!box || !input) return;
+
+        const termo = input.value || '';
+        const itens = filtrarClientesRapido(termo);
+
+        if (!itens.length) {
+            const digits11 = String(termo || '').replace(/\D/g, '');
+            let extra = '';
+            if (digits11.length === 11) {
+                extra = `
+                    <div class="px-3 pb-3">
+                        <button id="btn-buscar-cpf-servidor" type="button"
+                            class="w-full px-4 py-2 rounded-lg bg-blue-600 text-white font-semibold hover:bg-blue-700 transition-all">
+                            Buscar CPF no servidor
+                        </button>
+                    </div>
+                `;
+            }
+
+            box.innerHTML = `
+                <div class="px-3 py-3 text-sm text-slate-500">
+                    Nenhum cliente encontrado no cache.
+                    <div class="text-xs text-slate-400 mt-1">
+                        Dica: digite nome, email, ou CPF completo.
+                    </div>
+                </div>
+                ${extra}
+            `;
+            box.classList.remove('hidden');
+
+            const btnSrv = document.getElementById('btn-buscar-cpf-servidor');
+            if (btnSrv) {
+                btnSrv.addEventListener('click', function() {
+                    selecionarClienteRapido();
+                });
+            }
+            return;
+        }
+
+        box.innerHTML = itens.map(function(c) {
+            const nome = escapeHtml(c.nome_completo || '-');
+            const email = escapeHtml(c.email || '-');
+            const cpf = escapeHtml(formatarCPFParaExibicao(c.cpf || '-'));
+            const id = escapeHtml(String(c.id || ''));
+            const iniciais = escapeHtml(((c.nome_completo || 'C').trim().charAt(0) || 'C').toUpperCase());
+            const valor = escapeHtml((c.nome_completo || '') + ' | ' + (formatarCPFParaExibicao(c.cpf) || '') + ' | ' + (c.email || ''));
+
+            return `
+                <button type="button"
+                    class="w-full text-left px-3 py-3 hover:bg-slate-50 transition-all border-b border-slate-100 last:border-b-0"
+                    data-id="${id}"
+                    data-valor="${valor}">
+                    <div class="flex items-start gap-3">
+                        <div class="w-9 h-9 rounded-lg bg-slate-200 text-slate-700 flex items-center justify-center font-bold flex-shrink-0">
+                            ${iniciais}
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="font-semibold text-slate-800 truncate">${nome}</div>
+                            <div class="text-xs text-slate-500 mt-0.5 truncate">${email}</div>
+                            <div class="text-xs text-slate-400 mt-1">CPF: ${cpf}</div>
+                        </div>
+                        <div class="flex-shrink-0">
+                            <span class="text-xs px-2 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-semibold">
+                                Selecionar
+                            </span>
+                        </div>
+                    </div>
+                </button>
+            `;
+        }).join('');
+
+        box.classList.remove('hidden');
+
+        box.querySelectorAll('[data-id]').forEach(function(btn) {
+            btn.addEventListener('click', function() {
+                const id = this.getAttribute('data-id');
+                const val = this.getAttribute('data-valor') || '';
+                input.value = val;
+                box.classList.add('hidden');
+                selecionarClienteRapido(id);
+            });
+        });
+    }
+
+    async function selecionarClienteRapido(clienteIdForcado) {
+        const input = document.getElementById('cliente-busca-rapida');
+        const termoBruto = String(input ? input.value : '').trim();
+        const termo = termoBruto.toLowerCase();
+
+        const btnUsar = document.getElementById('btn-usar-cliente-rapido');
+        if (btnUsar) {
+            btnUsar.classList.add('btn-loading');
+            btnUsar.disabled = true;
+        }
+
+        try {
+            if (!termoBruto && !clienteIdForcado) {
+                Utils.showToast('Digite um cliente para selecionar.', 'warning');
+                if (input) input.focus();
+                return;
+            }
+
+            let cliente = null;
+
+            // 1) Se veio por clique de sugestão: usa ID direto
+            if (clienteIdForcado) {
+                cliente = clientesById[String(clienteIdForcado)] || null;
+            }
+
+            // 2) Tentativas: ID, CPF, Email, Nome (no cache)
+            if (!cliente && termoBruto) {
+
+                // ID direto
+                if (/^\d+$/.test(termoBruto)) {
+                    cliente = clientesById[String(termoBruto)] || null;
                 }
 
-                const resultado = await API.call('criarProcesso', payload, 'POST', true);
+                // CPF (digits) - OBS: no cache é mascarado, então pode não achar CPF completo
+                if (!cliente) {
+                    const digits = termoBruto.replace(/\D/g, '');
+                    if (digits.length >= 6) {
+                        const candidatosCpf = (listaClientesCache || []).filter(function(c) {
+                            const cCpf = String(c.cpf || '').replace(/\D/g, '');
+                            return cCpf && cCpf.includes(digits);
+                        });
 
-                // Limpa cache
-                Utils.Cache.clear('listarProcessos');
-                Utils.Cache.clear('getDashboard');
-
-                Utils.showToast('Processo cadastrado com sucesso!', 'success');
-
-                // Redireciona
-                Utils.showLoading("Abrindo processo jurídico...", "database");
-
-                setTimeout(() => {
-                    if (resultado && resultado.id) {
-                        Utils.navigateTo('detalhe-processo.html?id=' + resultado.id);
-                    } else {
-                        Utils.navigateTo('processos.html');
+                        if (candidatosCpf.length === 1) cliente = candidatosCpf[0];
+                        else if (candidatosCpf.length > 1) {
+                            Utils.showToast('Encontrei mais de 1 cliente com esse CPF. Refine a busca.', 'warning');
+                            renderSugestoesClientes();
+                            return;
+                        }
                     }
-                }, 1500);
+                }
 
-            } catch (error) {
-                console.error('Erro ao salvar processo:', error);
-                Utils.hideLoading();
+                // Email exato
+                if (!cliente && termo.includes('@')) {
+                    const byEmail = (listaClientesCache || []).filter(function(c) {
+                        return String(c.email || '').toLowerCase() === termo;
+                    });
+                    if (byEmail.length === 1) cliente = byEmail[0];
+                }
 
-                if (error.message && error.message.includes('Já existe')) {
-                    Utils.showToast(error.message, 'error');
-                    const campoNumero = document.getElementById('numero_processo');
-                    campoNumero.focus();
-                    campoNumero.classList.add('border-red-500');
-                    setTimeout(() => campoNumero.classList.remove('border-red-500'), 3000);
-                } else {
-                    Utils.showToast(error.message || 'Erro ao cadastrar processo.', 'error');
+                // Nome - se bater exato
+                if (!cliente) {
+                    const byNome = (listaClientesCache || []).filter(function(c) {
+                        return String(c.nome_completo || '').toLowerCase() === termo;
+                    });
+                    if (byNome.length === 1) cliente = byNome[0];
+                }
+
+                // Se ainda não achou, tenta o primeiro da lista filtrada
+                if (!cliente) {
+                    const top = filtrarClientesRapido(termoBruto);
+                    if (top.length === 1) cliente = top[0];
                 }
             }
+
+            if (!cliente) {
+                // Se digitou CPF completo (11 dígitos), busca no servidor
+                const digits11 = String(termoBruto || '').replace(/\D/g, '');
+                if (!clienteIdForcado && digits11.length === 11) {
+                    try {
+                        const encontrado = await API.call('buscarClientePorCPF', { cpf: digits11 }, 'POST', true);
+                        if (encontrado && encontrado.id) {
+                            upsertClienteNaSelecaoRapida(encontrado);
+
+                            if (input) {
+                                input.value = (encontrado.nome_completo || '-') + ' | ' + formatarCPFParaExibicao(encontrado.cpf) + ' | ' + (encontrado.email || '-');
+                            }
+
+                            const sugSrv = document.getElementById('clientes-sugestoes');
+                            if (sugSrv) sugSrv.classList.add('hidden');
+
+                            mostrarClienteEncontrado(encontrado);
+
+                            // Busca completo em background
+                            API.clientes.buscarPorId(encontrado.id)
+                                .then(function(completo) {
+                                    if (completo && completo.id) {
+                                        upsertClienteNaSelecaoRapida(completo);
+                                        if (clienteSelecionado && String(clienteSelecionado.id) === String(completo.id)) {
+                                            mostrarClienteEncontrado(completo);
+                                        }
+                                    }
+                                })
+                                .catch(function() {});
+
+                            return;
+                        }
+                    } catch (err) {
+                        const msg = (err && err.message) ? err.message : '';
+                        if (msg.toLowerCase().includes('não encontrado') || msg.toLowerCase().includes('nao encontrado')) {
+                            mostrarFormNovoCliente(digits11);
+                            Utils.showToast('Cliente não encontrado. Você pode cadastrar abaixo.', 'warning');
+                            return;
+                        }
+                        Utils.showToast(msg || 'Falha ao buscar cliente no servidor.', 'error');
+                        return;
+                    }
+                }
+
+                Utils.showToast('Cliente não encontrado. Digite nome, email ou CPF completo (11 dígitos).', 'warning');
+                renderSugestoesClientes();
+                return;
+            }
+
+            // Esconde sugestões ao selecionar
+            const sug = document.getElementById('clientes-sugestoes');
+            if (sug) sug.classList.add('hidden');
+
+            // Mostra IMEDIATO
+            mostrarClienteEncontrado(cliente);
+
+            // Busca dados completos em BACKGROUND (não trava)
+            if (cliente.id) {
+                API.clientes.buscarPorId(cliente.id)
+                    .then(function(completo) {
+                        if (completo && completo.id) {
+                            upsertClienteNaSelecaoRapida(completo);
+
+                            if (clienteSelecionado && String(clienteSelecionado.id) === String(completo.id)) {
+                                mostrarClienteEncontrado(completo);
+                            }
+                        }
+                    })
+                    .catch(function() {});
+            }
+
+        } finally {
+            if (btnUsar) {
+                btnUsar.classList.remove('btn-loading');
+                btnUsar.disabled = false;
+            }
         }
-    </script>
+    }
+
+    // Compatibilidade: se em algum ponto você ainda chamar buscarCliente()
+    async function buscarCliente() {
+        const cpfInput = document.getElementById('cpf-busca') || document.getElementById('cliente-busca-rapida');
+        if (!cpfInput) return;
+        const cpf = normalizarCPFFrontend(cpfInput.value);
+
+        if (cpf.length !== 11) {
+            Utils.showToast('Digite um CPF válido com 11 dígitos.', 'warning');
+            cpfInput.focus();
+            return;
+        }
+
+        const btn = document.getElementById('btn-buscar-cpf') || document.getElementById('btn-usar-cliente-rapido');
+        if (btn) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        }
+
+        try {
+            const cliente = await API.call('buscarClientePorCPF', { cpf: cpf }, 'POST', true);
+            if (cliente && cliente.id) {
+                upsertClienteNaSelecaoRapida(cliente);
+                mostrarClienteEncontrado(cliente);
+            }
+        } catch (error) {
+            mostrarFormNovoCliente(cpf);
+            Utils.showToast('Cliente não encontrado. Você pode cadastrar abaixo.', 'warning');
+        } finally {
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+    }
+
+    // =========================================================================
+    // EXIBIÇÃO DE RESULTADOS
+    // =========================================================================
+    function mostrarClienteEncontrado(cliente) {
+        clienteSelecionado = cliente;
+
+        const cpfDisplay = formatarCPFParaExibicao(cliente.cpf);
+
+        const iniciais = (cliente.nome_completo ? cliente.nome_completo.charAt(0).toUpperCase() : 'C');
+        const elIniciais = document.getElementById('cliente-iniciais');
+        const elNome = document.getElementById('cliente-nome');
+        const elEmail = document.getElementById('cliente-email');
+        const elCpf = document.getElementById('cliente-cpf-display');
+        const elHidden = document.getElementById('cliente-id-selecionado');
+
+        if (elIniciais) elIniciais.textContent = iniciais;
+        if (elNome) elNome.textContent = cliente.nome_completo || 'Cliente';
+        if (elEmail) elEmail.textContent = cliente.email || '-';
+        if (elCpf) elCpf.textContent = 'CPF: ' + (cpfDisplay || '-');
+        if (elHidden) elHidden.value = cliente.id || '';
+
+        const boxOk = document.getElementById('cliente-encontrado');
+        const boxNo = document.getElementById('cliente-nao-encontrado');
+        if (boxOk) boxOk.classList.remove('hidden');
+        if (boxNo) boxNo.classList.add('hidden');
+
+        Utils.showToast('Cliente selecionado!', 'success');
+    }
+
+    function mostrarFormNovoCliente(cpf) {
+        const cpfFormatado = formatarCPFParaExibicao(cpf);
+
+        const boxOk = document.getElementById('cliente-encontrado');
+        const boxNo = document.getElementById('cliente-nao-encontrado');
+        if (boxOk) boxOk.classList.add('hidden');
+        if (boxNo) boxNo.classList.remove('hidden');
+
+        const cpfEl = document.getElementById('novo-cliente-cpf');
+        if (cpfEl) cpfEl.value = cpfFormatado;
+
+        const nomeEl = document.getElementById('novo-cliente-nome');
+        if (nomeEl) nomeEl.focus();
+    }
+
+    // =========================================================================
+    // AÇÕES UI
+    // =========================================================================
+    function limparCliente() {
+        clienteSelecionado = null;
+        const boxOk = document.getElementById('cliente-encontrado');
+        const boxNo = document.getElementById('cliente-nao-encontrado');
+        if (boxOk) boxOk.classList.add('hidden');
+        if (boxNo) boxNo.classList.add('hidden');
+
+        const input = document.getElementById('cliente-busca-rapida');
+        if (input) {
+            input.value = '';
+            input.focus();
+        }
+    }
+
+    function limparFormNovoCliente() {
+        const boxNo = document.getElementById('cliente-nao-encontrado');
+        if (boxNo) boxNo.classList.add('hidden');
+
+        const ids = ['novo-cliente-nome', 'novo-cliente-cpf', 'novo-cliente-email', 'novo-cliente-telefone'];
+        ids.forEach(function(id) {
+            const el = document.getElementById(id);
+            if (el) el.value = '';
+        });
+    }
+
+    async function cadastrarEAvancar() {
+        const btn = document.getElementById('btn-cadastrar-novo-cliente');
+        if (btn) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        }
+
+        try {
+            const nome = String(document.getElementById('novo-cliente-nome').value || '').trim();
+            const cpf = normalizarCPFFrontend(document.getElementById('novo-cliente-cpf').value);
+            const email = String(document.getElementById('novo-cliente-email').value || '').trim().toLowerCase();
+            const telefone = normalizarTelefoneFrontend(document.getElementById('novo-cliente-telefone').value);
+
+            if (!nome) throw new Error('Informe o nome do cliente.');
+            if (!cpf || cpf.length !== 11) throw new Error('CPF inválido.');
+            if (!email) throw new Error('Informe o e-mail do cliente.');
+
+            const resultado = await API.call('cadastrarCliente', {
+                nome_completo: nome,
+                cpf: cpf,
+                email: email,
+                telefone: telefone
+            });
+
+            clienteSelecionado = resultado;
+            upsertClienteNaSelecaoRapida(resultado);
+            Utils.showToast('Cliente cadastrado com sucesso!', 'success');
+
+            // Avança para o passo 2
+            setTimeout(() => {
+                avancarParaProcesso();
+            }, 500);
+
+        } catch (error) {
+            console.error('Erro ao cadastrar cliente:', error);
+            Utils.showToast(error.message || 'Erro ao cadastrar cliente.', 'error');
+        } finally {
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+    }
+
+    function avancarParaProcesso() {
+        if (!clienteSelecionado || !clienteSelecionado.id) {
+            Utils.showToast('Selecione um cliente para continuar.', 'warning');
+            return;
+        }
+
+        document.getElementById('cliente-id').value = clienteSelecionado.id;
+
+        document.getElementById('step1-content').classList.add('hidden');
+        document.getElementById('step2-content').classList.remove('hidden');
+
+        document.getElementById('step-1-circle').classList.remove('bg-blue-600', 'text-white');
+        document.getElementById('step-1-circle').classList.add('bg-slate-200', 'text-slate-700');
+
+        document.getElementById('step-2-circle').classList.remove('bg-slate-200', 'text-slate-700');
+        document.getElementById('step-2-circle').classList.add('bg-blue-600', 'text-white');
+    }
+
+    function voltarParaCliente() {
+        document.getElementById('step2-content').classList.add('hidden');
+        document.getElementById('step1-content').classList.remove('hidden');
+
+        document.getElementById('step-2-circle').classList.remove('bg-blue-600', 'text-white');
+        document.getElementById('step-2-circle').classList.add('bg-slate-200', 'text-slate-700');
+
+        document.getElementById('step-1-circle').classList.remove('bg-slate-200', 'text-slate-700');
+        document.getElementById('step-1-circle').classList.add('bg-blue-600', 'text-white');
+    }
+
+    // =========================================================================
+    // SALVAR PROCESSO
+    // =========================================================================
+    async function salvarProcesso(e) {
+        e.preventDefault();
+
+        const btn = document.getElementById('btn-salvar');
+        if (btn) {
+            btn.classList.add('btn-loading');
+            btn.disabled = true;
+        }
+
+        try {
+            const clienteId = document.getElementById('cliente-id').value;
+
+            const payload = {
+                cliente_id: clienteId,
+                numero_processo: String(document.getElementById('numero-processo').value || '').trim(),
+                titulo: String(document.getElementById('titulo-processo').value || '').trim(),
+                orgao: String(document.getElementById('orgao-processo').value || '').trim(),
+                data_ajuizamento: String(document.getElementById('data-ajuizamento').value || '').trim(),
+                observacoes: String(document.getElementById('observacoes').value || '').trim()
+            };
+
+            if (!payload.numero_processo) throw new Error('Informe o número do processo.');
+            if (!payload.titulo) throw new Error('Informe o título/assunto.');
+            if (!payload.orgao) throw new Error('Informe o órgão.');
+            if (!payload.data_ajuizamento) throw new Error('Informe a data de ajuizamento.');
+
+            await API.call('criarProcesso', payload);
+
+            Utils.showToast('Processo cadastrado com sucesso!', 'success');
+
+            setTimeout(() => {
+                window.location.href = 'processos.html';
+            }, 900);
+
+        } catch (error) {
+            console.error('Erro ao salvar processo:', error);
+            Utils.showToast(error.message || 'Erro ao salvar processo.', 'error');
+        } finally {
+            if (btn) {
+                btn.classList.remove('btn-loading');
+                btn.disabled = false;
+            }
+        }
+    }
+</script>
 
 </body>
 </html>
