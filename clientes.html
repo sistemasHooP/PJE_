@@ -87,7 +87,14 @@
                 <div class="lg:col-span-2 bg-white rounded-xl border border-slate-200 p-5">
                     <div class="flex flex-col sm:flex-row gap-3 mb-4">
                         <input id="busca-clientes" type="text" placeholder="Buscar por nome, CPF ou email" class="flex-1 border border-slate-300 rounded-lg px-3 py-2">
-                        <button id="btn-atualizar-clientes" type="button" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg">Atualizar</button>
+                        
+                        <button id="btn-atualizar-clientes" type="button" class="flex items-center justify-center gap-2 px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white rounded-lg transition-colors active:scale-95 disabled:opacity-70 disabled:cursor-not-allowed">
+                            <svg id="icon-refresh" class="w-5 h-5 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+                            </svg>
+                            <span>Atualizar</span>
+                        </button>
+
                     </div>
                     <div class="overflow-x-auto">
                         <table class="w-full text-sm">
