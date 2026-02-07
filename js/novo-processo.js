@@ -2,7 +2,7 @@
  * ============================================================================
  * ARQUIVO: js/novo-processo.js
  * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Feedback visual (Loader) ao selecionar cliente e autopreenchimento.
+ * ATUALIZAÇÃO: Correção de Rendering do Loader (Forçando Repaint).
  * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
  * ============================================================================
  */
@@ -69,35 +69,40 @@ function carregarClientesParaSelect() {
         }
     }, true); // true = silencioso (não mostra loader global só pra carregar a lista)
 
-    // --- AQUI ESTÁ A CORREÇÃO DO UX ---
-    // Evento de mudança no Select
+    // --- CORREÇÃO DO LOADER (FORÇANDO REPAINT) ---
     select.addEventListener('change', async function() {
         const clienteId = this.value;
         
+        // Se escolheu a opção vazia ("Selecione..."), limpa e sai
         if (!clienteId) {
             limparCamposCliente();
             return;
         }
 
-        // MOSTRA O LOADER AGORA (Feedback Visual)
+        // 1. Mostra o Loader
         Utils.showLoading("Buscando dados do cliente...");
+        
+        // 2. TRUQUE: Pequena pausa de 50ms para garantir que o navegador desenhe o loader
+        // antes de iniciar a requisição de rede que pode travar a UI momentaneamente.
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         try {
-            // Busca dados completos do cliente (pode demorar 2-3s)
+            // 3. Busca dados completos do cliente
             const clienteCompleto = await API.clientes.buscarPorId(clienteId);
 
             if (clienteCompleto) {
                 preencherCamposCliente(clienteCompleto);
-                Utils.showToast("Dados do cliente carregados.", "info");
+                Utils.showToast("Dados preenchidos.", "info");
             } else {
                 Utils.showToast("Cliente não encontrado.", "error");
+                limparCamposCliente();
             }
 
         } catch (error) {
             console.error(error);
             Utils.showToast("Erro ao buscar detalhes do cliente.", "error");
         } finally {
-            // ESCONDE O LOADER
+            // 4. Esconde o Loader
             Utils.hideLoading();
         }
     });
