@@ -132,30 +132,22 @@
         </div>
     </div>
 
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    <!-- SCRIPTS - ORDEM CRÍTICA (NÃO MUDAR!)                                     -->
-    <!-- ═══════════════════════════════════════════════════════════════════════ -->
-    
-    <!-- 1. Biblioteca de Criptografia (PRIMEIRO DE TUDO) -->
-    <script src="js/crypto.js"></script>
-    
-    <!-- 2. Scripts de Infraestrutura -->
+    <!-- Scripts de Infraestrutura -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
 
-    <!-- 3. Script PWA (Controle de Instalação) -->
+    <!-- Script PWA (Controle de Instalação) -->
     <script src="js/pwa.js"></script>
 
-    <!-- 4. Script da Página (POR ÚLTIMO) -->
+    <!-- Script da Página (Lógica Específica) -->
     <script src="js/login.js"></script>
     
     <script>
-        if (typeof CONFIG !== 'undefined' && CONFIG.VERSION) {
-            document.getElementById('version-display').textContent = 'v' + CONFIG.VERSION;
-        }
+        document.getElementById('version-display').textContent = 'v' + CONFIG.VERSION;
     </script>
 
 </body>
 </html>
+
