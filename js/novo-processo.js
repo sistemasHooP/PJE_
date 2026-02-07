@@ -2,10 +2,23 @@
  * ============================================================================
  * ARQUIVO: js/novo-processo.js
  * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Correção de Rendering do Loader (Forçando Repaint).
+ * ATUALIZAÇÃO: Correção do erro "escapeHtml is not defined" e Loader.
  * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
  * ============================================================================
  */
+
+// --- CORREÇÃO DE ERRO GLOBAL (CRÍTICO) ---
+// Define escapeHtml globalmente para corrigir o erro que ocorre
+// em scripts inline do arquivo HTML (legado ou autocomplete).
+window.escapeHtml = function(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -67,9 +80,9 @@ function carregarClientesParaSelect() {
                 select.appendChild(option);
             });
         }
-    }, true); // true = silencioso (não mostra loader global só pra carregar a lista)
+    }, true); // true = silencioso
 
-    // --- CORREÇÃO DO LOADER (FORÇANDO REPAINT) ---
+    // --- LÓGICA DE SELEÇÃO COM LOADER ---
     select.addEventListener('change', async function() {
         const clienteId = this.value;
         
@@ -83,7 +96,7 @@ function carregarClientesParaSelect() {
         Utils.showLoading("Buscando dados do cliente...");
         
         // 2. TRUQUE: Pequena pausa de 50ms para garantir que o navegador desenhe o loader
-        // antes de iniciar a requisição de rede que pode travar a UI momentaneamente.
+        // antes de iniciar a requisição (resolve o problema da tela travar sem feedback)
         await new Promise(resolve => setTimeout(resolve, 50));
 
         try {
@@ -92,7 +105,8 @@ function carregarClientesParaSelect() {
 
             if (clienteCompleto) {
                 preencherCamposCliente(clienteCompleto);
-                Utils.showToast("Dados preenchidos.", "info");
+                // Feedback sutil ao invés de toast invasivo (opcional)
+                // Utils.showToast("Dados preenchidos.", "info");
             } else {
                 Utils.showToast("Cliente não encontrado.", "error");
                 limparCamposCliente();
