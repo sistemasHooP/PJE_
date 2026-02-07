@@ -2,7 +2,7 @@
  * ============================================================================
  * ARQUIVO: js/api.js
  * DESCRIÇÃO: Camada de comunicação com a API (Google Apps Script).
- * VERSÃO: Completa (Com Cache Inteligente, Proxy de Download e Modo Silencioso).
+ * VERSÃO: 2.0 - Com Cache Inteligente SWR, Proxy de Download e Preload de Clientes.
  * DEPENDÊNCIAS: js/config.js, js/utils.js
  * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
  * ============================================================================
@@ -13,7 +13,8 @@ const API = {
     /**
      * Função genérica para enviar requisições ao Google Apps Script.
      * Gerencia Loading, Autenticação, CORS e tratamento de Erros.
-     * * @param {string} action - Nome da ação definida no switch do Code.gs (ex: 'login').
+     * 
+     * @param {string} action - Nome da ação definida no switch do Code.gs (ex: 'login').
      * @param {Object} data - Objeto com os dados a serem enviados.
      * @param {string} method - 'GET' ou 'POST' (Padrão: POST).
      * @param {boolean} isSilent - Se TRUE, não exibe o Loading na tela (usado para background).
@@ -116,7 +117,8 @@ const API = {
      * 1. Retorna Cache imediatamente (callback com source='cache').
      * 2. Busca na rede em background.
      * 3. Retorna Rede atualizada (callback com source='network').
-     * * @param {string} action - Ação da API.
+     * 
+     * @param {string} action - Ação da API.
      * @param {Object} params - Parâmetros da busca.
      * @param {Function} onResult - Callback (data, source) => void.
      * @param {boolean} forceSilent - Se true, força a chamada de rede a ser silenciosa (útil para preload).
@@ -181,9 +183,86 @@ const API = {
     },
 
     clientes: {
-        listar: () => API.call('listarClientes', {}, 'POST', true),
-        cadastrar: (dadosCliente) => API.call('cadastrarCliente', dadosCliente),
-        atualizar: (dadosCliente) => API.call('atualizarCliente', dadosCliente)
+        /**
+         * Lista clientes com Cache SWR (Stale-While-Revalidate).
+         * MELHORADO: Agora usa cache inteligente para carregamento instantâneo.
+         * 
+         * @param {Function} onResult - Callback (clientes[], source) => void
+         * @param {boolean} forceSilent - Se true, não mostra loading
+         * @returns {Promise} - Para uso com await quando não usar callback
+         */
+        listar: function(onResult, forceSilent = true) {
+            // Se não passou callback, usa modo legado (Promise direto)
+            if (typeof onResult !== 'function') {
+                // Modo legado: tenta cache primeiro, depois rede
+                const cacheKey = 'listarClientes_{}';
+                const cached = Utils.Cache.get(cacheKey);
+                
+                if (cached) {
+                    console.log('[API] Clientes: retornando do cache');
+                    // Atualiza cache em background (fire-and-forget)
+                    API.call('listarClientes', {}, 'POST', true)
+                        .then(data => Utils.Cache.set(cacheKey, data))
+                        .catch(() => {}); // Ignora erros no background
+                    return Promise.resolve(cached);
+                }
+                
+                // Sem cache, busca na rede
+                return API.call('listarClientes', {}, 'POST', forceSilent)
+                    .then(data => {
+                        Utils.Cache.set(cacheKey, data);
+                        return data;
+                    });
+            }
+            
+            // Modo SWR com callback
+            return API.fetchWithCache('listarClientes', {}, onResult, forceSilent);
+        },
+
+        /**
+         * Busca cliente por CPF (sempre rede, sem cache).
+         */
+        buscarPorCPF: (cpf) => API.call('buscarClientePorCPF', { cpf }, 'POST', true),
+
+        /**
+         * Cadastra novo cliente.
+         */
+        cadastrar: function(dadosCliente) {
+            return API.call('cadastrarCliente', dadosCliente).then(result => {
+                // Invalida cache de clientes após cadastro
+                Utils.Cache.clear('listarClientes');
+                return result;
+            });
+        },
+
+        /**
+         * Atualiza cliente existente.
+         */
+        atualizar: function(dadosCliente) {
+            return API.call('atualizarCliente', dadosCliente).then(result => {
+                // Invalida cache de clientes após atualização
+                Utils.Cache.clear('listarClientes');
+                return result;
+            });
+        },
+
+        /**
+         * Preload silencioso de clientes (chamado após login).
+         * Carrega lista em background e salva no cache.
+         */
+        preload: function() {
+            console.log('[API] Iniciando preload de clientes...');
+            return API.call('listarClientes', {}, 'POST', true)
+                .then(data => {
+                    Utils.Cache.set('listarClientes_{}', data);
+                    console.log(`[API] Preload de clientes concluído: ${Array.isArray(data) ? data.length : 0} clientes em cache`);
+                    return data;
+                })
+                .catch(err => {
+                    console.warn('[API] Preload de clientes falhou (não crítico):', err.message);
+                    return [];
+                });
+        }
     },
 
     movimentacoes: {
@@ -198,4 +277,3 @@ const API = {
         download: (fileData) => API.call('downloadArquivo', fileData)
     }
 };
-
