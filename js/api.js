@@ -188,6 +188,7 @@ const API = {
             }
             return API.call('listarClientes', {}, 'POST', true);
         },
+        buscarPorId: (cliente_id) => API.call('buscarClientePorId', { cliente_id }, 'POST', true),
         cadastrar: (dadosCliente) => API.call('cadastrarCliente', dadosCliente),
         atualizar: (dadosCliente) => API.call('atualizarCliente', dadosCliente)
     },

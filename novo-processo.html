@@ -550,11 +550,22 @@
         let clienteSelecionado = null;
         let clienteVinculado = false;
         let listaClientesCache = [];
+        let clientesById = {};
 
         function normalizarCPFFrontend(valor) {
             const digitos = String(valor || '').replace(/\D/g, '');
             if (!digitos) return '';
             return digitos.padStart(11, '0').slice(-11);
+        }
+
+        function formatarCPFParaExibicao(cpf) {
+            const bruto = String(cpf || '').trim();
+            const digitos = bruto.replace(/\D/g, '');
+            if (digitos.length === 11) {
+                return digitos.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            }
+            // Quando vier mascarado da API (***.***.***-**) preserva visual
+            return bruto || '-';
         }
 
         // =====================================================================
@@ -646,6 +657,10 @@
             try {
                 await API.clientes.listar(function(clientes, source) {
                     listaClientesCache = Array.isArray(clientes) ? clientes : [];
+                    clientesById = {};
+                    listaClientesCache.forEach(function(c) {
+                        if (c && c.id) clientesById[String(c.id)] = c;
+                    });
                     popularDatalistClientes();
                     if (source === 'cache') renderSugestoesClientes();
                 });
@@ -701,7 +716,8 @@
                 const cpf = escapeHtml(c.cpf || '-');
                 const email = escapeHtml(c.email || '-');
                 const valor = escapeHtml((c.nome_completo || '') + ' | ' + (c.cpf || '') + ' | ' + (c.email || ''));
-                return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0" data-cliente="' + valor + '">' +
+                const id = escapeHtml(String(c.id || ''));
+                return '<button type="button" class="w-full text-left px-3 py-2 hover:bg-slate-50 border-b border-slate-100 last:border-b-0" data-cliente="' + valor + '" data-id="' + id + '">' +
                        '<div class="text-sm font-medium text-slate-700">' + nome + '</div>' +
                        '<div class="text-xs text-slate-500">' + cpf + ' · ' + email + '</div>' +
                        '</button>';
@@ -712,30 +728,77 @@
                 btn.addEventListener('click', function() {
                     input.value = this.getAttribute('data-cliente');
                     box.classList.add('hidden');
-                    selecionarClienteRapido();
+                    selecionarClienteRapido(this.getAttribute('data-id'));
                 });
             });
         }
 
-        function selecionarClienteRapido() {
+        async function selecionarClienteRapido(clienteIdForcado) {
             const input = document.getElementById('cliente-busca-rapida');
-            const termo = (input.value || '').toLowerCase().trim();
+            const termoBruto = String(input.value || '').trim();
+            const termo = termoBruto.toLowerCase();
 
-            if (!termo) {
+            if (!termoBruto && !clienteIdForcado) {
                 Utils.showToast('Digite um cliente para selecionar.', 'warning');
                 input.focus();
                 return;
             }
 
-            const cliente = filtrarClientesRapido(termo)[0];
+            let cliente = null;
+
+            // 1) Clique direto na sugestão (mais confiável)
+            if (clienteIdForcado) {
+                cliente = clientesById[String(clienteIdForcado)] || null;
+            }
+
+            // 2) Match exato por string da opção (nome | cpf | email)
+            if (!cliente && termoBruto.includes('|')) {
+                cliente = listaClientesCache.find(function(c) {
+                    const valor = (String(c.nome_completo || '') + ' | ' + String(c.cpf || '') + ' | ' + String(c.email || '')).toLowerCase();
+                    return valor === termo;
+                }) || null;
+            }
+
+            // 3) CPF completo digitado (11 dígitos)
+            if (!cliente) {
+                const cpfTermo = termoBruto.replace(/\D/g, '');
+                if (cpfTermo.length === 11) {
+                    cliente = listaClientesCache.find(function(c) {
+                        const cpf = String(c.cpf || '').replace(/\D/g, '');
+                        return cpf === cpfTermo;
+                    }) || null;
+                }
+            }
+
+            // 4) fallback por filtro, mas só aceita se retornar único
+            if (!cliente) {
+                const candidatos = filtrarClientesRapido(termoBruto);
+                if (candidatos.length === 1) {
+                    cliente = candidatos[0];
+                } else if (candidatos.length > 1) {
+                    Utils.showToast('Há mais de um cliente parecido. Clique na sugestão correta.', 'warning');
+                    renderSugestoesClientes();
+                    return;
+                }
+            }
 
             if (!cliente) {
                 Utils.showToast('Cliente não encontrado na lista. Use a busca por CPF abaixo.', 'warning');
                 return;
             }
 
+            // Busca dados completos pelo ID para evitar CPF mascarado no vínculo
+            try {
+                if (cliente.id) {
+                    const completo = await API.clientes.buscarPorId(cliente.id);
+                    if (completo && completo.id) cliente = completo;
+                }
+            } catch (e) {
+                console.warn('Falha ao buscar cliente completo por ID, usando dados locais.', e);
+            }
+
             mostrarClienteEncontrado(cliente);
-            document.getElementById('cpf-busca').value = cliente.cpf || '';
+            document.getElementById('cpf-busca').value = formatarCPFParaExibicao(cliente.cpf);
         }
 
         // =====================================================================
@@ -825,9 +888,8 @@
         function mostrarClienteEncontrado(cliente) {
             clienteSelecionado = cliente;
 
-            // Formata CPF para exibição
-            let cpfDisplay = String(cliente.cpf || '').replace(/\D/g, '').padStart(11, '0');
-            cpfDisplay = cpfDisplay.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+            // Formata CPF para exibição (respeita CPF mascarado e evita zeros indevidos)
+            const cpfDisplay = formatarCPFParaExibicao(cliente.cpf);
 
             document.getElementById('cliente-iniciais').textContent = cliente.nome_completo ? cliente.nome_completo.charAt(0).toUpperCase() : 'C';
             document.getElementById('cliente-nome').textContent = cliente.nome_completo;
@@ -1060,9 +1122,16 @@
                 };
 
                 // Se tiver cliente selecionado, adiciona CPF ao payload
-                if (clienteSelecionado && clienteSelecionado.cpf) {
-                    // Garante CPF normalizado com 11 dígitos e dados completos do cliente
-                    payload.cpf_cliente = normalizarCPFFrontend(clienteSelecionado.cpf);
+                if (clienteSelecionado) {
+                    if (clienteSelecionado.id) {
+                        payload.cliente_id = String(clienteSelecionado.id).trim();
+                    }
+
+                    const cpfNorm = normalizarCPFFrontend(clienteSelecionado.cpf);
+                    if (cpfNorm.length === 11) {
+                        payload.cpf_cliente = cpfNorm;
+                    }
+
                     payload.nome_cliente = (clienteSelecionado.nome_completo || clienteSelecionado.nome || '').trim();
                     payload.email_cliente = (clienteSelecionado.email || '').trim().toLowerCase();
                     payload.telefone_cliente = String(clienteSelecionado.telefone || '').replace(/\D/g, '');

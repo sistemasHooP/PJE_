@@ -106,8 +106,22 @@ var ProcessosService = {
     var clienteId = '';
     var emailInteressado = String(payload.email_interessado || '').trim().toLowerCase();
 
+    // Vínculo direto por ID (fluxo de seleção rápida)
+    if (payload.cliente_id) {
+      var clienteById = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, String(payload.cliente_id).trim());
+      if (!clienteById) {
+        throw new Error('Cliente selecionado não encontrado. Atualize a lista e tente novamente.');
+      }
+      clienteId = clienteById.id;
+      emailInteressado = String(clienteById.email || emailInteressado || '').trim().toLowerCase();
+
+      if (!payload.cpf_cliente) {
+        payload.cpf_cliente = clienteById.cpf;
+      }
+    }
+
     // CPF informado: tenta localizar cliente e/ou cadastrar automaticamente
-    if (payload.cpf_cliente) {
+    if (!clienteId && payload.cpf_cliente) {
       var cpfNormalizado = Utils.normalizarCPF(payload.cpf_cliente);
 
       if (!cpfNormalizado || cpfNormalizado.length !== 11) {

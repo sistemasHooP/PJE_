@@ -377,6 +377,41 @@ var ClienteService = {
     });
   },
 
+
+  /**
+   * Retorna um cliente específico por ID (uso interno - gestores)
+   */
+  buscarPorIdGestor: function(payload) {
+    var auth = AuthService.verificarToken(payload);
+
+    if (!auth.valido) {
+      throw new Error('Sessão expirada.');
+    }
+
+    if (!AuthService.isGestor(auth.user.perfil)) {
+      throw new Error('Acesso negado.');
+    }
+
+    var clienteId = String(payload.cliente_id || '').trim();
+    if (!clienteId) {
+      throw new Error('ID do cliente não informado.');
+    }
+
+    var cliente = Database.findById(CONFIG.SHEET_NAMES.CLIENTES, clienteId);
+    if (!cliente) {
+      throw new Error('Cliente não encontrado.');
+    }
+
+    return {
+      id: cliente.id,
+      nome_completo: cliente.nome_completo,
+      cpf: cliente.cpf,
+      email: cliente.email,
+      telefone: cliente.telefone,
+      status: cliente.status
+    };
+  },
+
   /**
    * Atualiza dados do cliente (uso interno - gestores)
    */

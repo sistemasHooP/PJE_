@@ -137,6 +137,9 @@ function _routeAction(payload) {
     case 'listarClientes':
       return ClienteService.listar(payload);
 
+    case 'buscarClientePorId':
+      return ClienteService.buscarPorIdGestor(payload);
+
     case 'atualizarCliente':
       return ClienteService.atualizar(payload);
 
