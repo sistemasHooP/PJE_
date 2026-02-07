@@ -2,29 +2,79 @@
  * ============================================================================
  * ARQUIVO: login.js
  * DESCRIÇÃO: Autenticação do advogado com PRELOAD de clientes
- * VERSÃO: 2.0 - OTIMIZADO com cache de clientes
- * FIX: Adiciona preload de clientes durante o login para evitar travamento
+ * VERSÃO: 2.1 - CORRIGIDO para IDs com hífen + validação robusta
+ * FIX: Adiciona verificação de elementos e compatibilidade com HTML existente
  * ============================================================================
  */
 
 document.addEventListener('DOMContentLoaded', function() {
-  const loginForm = document.getElementById('loginForm');
-  const emailInput = document.getElementById('email');
-  const senhaInput = document.getElementById('senha');
-  const loginButton = document.getElementById('loginButton');
+  
+  console.log('🔷 [Login] Script carregado. Iniciando...');
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // BUSCA ELEMENTOS DO DOM (com fallback para diferentes IDs)
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Formulário de login (tenta diferentes IDs)
+  const loginForm = document.getElementById('login-form') || 
+                    document.getElementById('loginForm') || 
+                    document.querySelector('form');
+
+  if (!loginForm) {
+    console.error('❌ [Login] ERRO: Formulário de login não encontrado!');
+    console.error('Certifique-se que existe um <form> com id="login-form"');
+    return;
+  }
+
+  console.log('✅ [Login] Formulário encontrado:', loginForm.id || 'sem id');
+
+  // Campos de entrada (tenta diferentes IDs/names)
+  const emailInput = document.getElementById('email') || 
+                     document.querySelector('input[name="email"]') ||
+                     document.querySelector('input[type="email"]');
+
+  const senhaInput = document.getElementById('senha') || 
+                     document.getElementById('password') ||
+                     document.querySelector('input[name="senha"]') ||
+                     document.querySelector('input[name="password"]') ||
+                     document.querySelector('input[type="password"]');
+
+  const loginButton = document.getElementById('loginButton') || 
+                      document.getElementById('btn-login') ||
+                      document.querySelector('button[type="submit"]') ||
+                      loginForm.querySelector('button');
+
+  // Elementos de feedback visual (opcionais)
   const loadingDiv = document.getElementById('loading');
   const loadingText = document.getElementById('loadingText');
+
+  // Validação dos elementos essenciais
+  if (!emailInput || !senhaInput) {
+    console.error('❌ [Login] ERRO: Campos de email ou senha não encontrados!');
+    console.error('Email input:', emailInput);
+    console.error('Senha input:', senhaInput);
+    return;
+  }
+
+  console.log('✅ [Login] Campos encontrados:');
+  console.log('  - Email:', emailInput.id || emailInput.name || 'sem identificador');
+  console.log('  - Senha:', senhaInput.id || senhaInput.name || 'sem identificador');
+  console.log('  - Botão:', loginButton ? (loginButton.id || 'sem id') : 'não encontrado');
 
   // ═══════════════════════════════════════════════════════════════════════════
   // 🔥 WARM-UP IMEDIATO (assim que a página carrega)
   // ═══════════════════════════════════════════════════════════════════════════
   
   // Warm-up silencioso em background (desperta o Apps Script)
-  API.call('ping').catch(() => {
-    // Ignora erros de warm-up
-  });
-
-  console.log('🚀 [Login] Warm-up iniciado em background');
+  if (typeof API !== 'undefined') {
+    API.call('ping').then(function() {
+      console.log('✅ [Login] Warm-up bem-sucedido');
+    }).catch(function(err) {
+      console.warn('⚠️ [Login] Warm-up falhou (não crítico):', err.message);
+    });
+  } else {
+    console.warn('⚠️ [Login] API não encontrada. Verifique se api.js foi carregado.');
+  }
 
   // ═══════════════════════════════════════════════════════════════════════════
   // LOGIN
@@ -33,24 +83,49 @@ document.addEventListener('DOMContentLoaded', function() {
   loginForm.addEventListener('submit', async function(e) {
     e.preventDefault();
 
+    console.log('🔐 [Login] Formulário enviado');
+
     const email = emailInput.value.trim();
     const senha = senhaInput.value.trim();
 
     if (!email || !senha) {
-      UI.showToast('Preencha todos os campos', 'error');
+      mostrarErro('Preencha todos os campos');
       return;
     }
 
-    loginButton.disabled = true;
-    loadingDiv.classList.remove('hidden');
-    loadingText.textContent = 'Autenticando...';
+    // Desabilita botão e mostra loading
+    if (loginButton) {
+      loginButton.disabled = true;
+      loginButton.textContent = 'Autenticando...';
+    }
+
+    if (loadingDiv) {
+      loadingDiv.classList.remove('hidden');
+    }
+
+    if (loadingText) {
+      loadingText.textContent = 'Autenticando...';
+    }
 
     try {
+      // Verifica se dependências estão disponíveis
+      if (typeof API === 'undefined') {
+        throw new Error('API não encontrada. Verifique se api.js foi carregado.');
+      }
+
+      if (typeof CryptoJS === 'undefined') {
+        throw new Error('CryptoJS não encontrado. Verifique se foi carregado.');
+      }
+
+      if (typeof Auth === 'undefined') {
+        throw new Error('Auth não encontrado. Verifique se auth.js foi carregado.');
+      }
+
       // 1️⃣ PASSO 1: LOGIN
       console.log('🔐 [Login] Iniciando autenticação...');
       
       const response = await API.call('login', { 
-        email, 
+        email: email, 
         senha: CryptoJS.SHA256(senha).toString() 
       });
 
@@ -63,10 +138,12 @@ document.addEventListener('DOMContentLoaded', function() {
       Auth.setUser(response.usuario);
 
       console.log('✅ [Login] Autenticação bem-sucedida');
-      loadingText.textContent = 'Carregando dados...';
+      
+      if (loadingText) {
+        loadingText.textContent = 'Carregando dados...';
+      }
 
       // 2️⃣ PASSO 2: PRELOAD DE CLIENTES EM BACKGROUND
-      // Isso evita travamento na aba "Novo Processo"
       console.log('📥 [Login] Iniciando preload de clientes...');
       
       await preloadClientes();
@@ -74,27 +151,33 @@ document.addEventListener('DOMContentLoaded', function() {
       // 3️⃣ PASSO 3: PRELOAD DE DASHBOARD (opcional, mas melhora UX)
       console.log('📊 [Login] Preload de dashboard...');
       
-      API.call('getDashboard').catch(() => {
+      API.call('getDashboard').catch(function() {
         // Ignora erros de preload (dashboard carrega depois)
       });
 
       // 4️⃣ SUCESSO: Redireciona para o dashboard
       console.log('✅ [Login] Preload concluído. Redirecionando...');
       
-      UI.showToast('Login realizado com sucesso!', 'success');
+      mostrarSucesso('Login realizado com sucesso!');
       
-      setTimeout(() => {
+      setTimeout(function() {
         window.location.href = './dashboard.html';
       }, 500);
 
     } catch (error) {
       console.error('❌ [Login] Erro:', error);
       
-      loginButton.disabled = false;
-      loadingDiv.classList.add('hidden');
+      if (loginButton) {
+        loginButton.disabled = false;
+        loginButton.textContent = 'ACESSAR SISTEMA';
+      }
+      
+      if (loadingDiv) {
+        loadingDiv.classList.add('hidden');
+      }
       
       const mensagem = error.message || 'Erro ao fazer login';
-      UI.showToast(mensagem, 'error');
+      mostrarErro(mensagem);
     }
   });
 
@@ -123,38 +206,50 @@ document.addEventListener('DOMContentLoaded', function() {
         return;
       }
 
-      console.log(`✅ [Preload] ${clientes.length} clientes carregados em ${duration}ms`);
+      console.log('✅ [Preload] ' + clientes.length + ' clientes carregados em ' + duration + 'ms');
 
-      // Salva no cache do utils.js (Cache.set)
-      // TTL de 30 minutos (suficiente para sessão de trabalho)
-      Cache.set('lista_clientes', clientes, 30 * 60 * 1000);
+      // Salva no cache (verifica se Cache existe)
+      if (typeof Cache !== 'undefined') {
+        // TTL de 30 minutos (suficiente para sessão de trabalho)
+        Cache.set('lista_clientes', clientes, 30 * 60 * 1000);
 
-      // Cria índices para busca rápida
-      const indicesPorCPF = {};
-      const indicesPorNome = {};
+        // Cria índices para busca rápida
+        var indicesPorCPF = {};
+        var indicesPorNome = {};
 
-      clientes.forEach((cliente, index) => {
-        // Índice por CPF (limpo)
-        if (cliente.cpf) {
-          indicesPorCPF[cliente.cpf] = index;
+        clientes.forEach(function(cliente, index) {
+          // Índice por CPF (limpo)
+          if (cliente.cpf) {
+            indicesPorCPF[cliente.cpf] = index;
+          }
+
+          // Índice por nome (normalizado para busca)
+          if (cliente.nome_completo) {
+            var nomeNormalizado = cliente.nome_completo
+              .toLowerCase()
+              .normalize('NFD')
+              .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+            
+            indicesPorNome[nomeNormalizado] = index;
+          }
+        });
+
+        // Salva índices
+        Cache.set('clientes_indice_cpf', indicesPorCPF, 30 * 60 * 1000);
+        Cache.set('clientes_indice_nome', indicesPorNome, 30 * 60 * 1000);
+
+        console.log('🔍 [Preload] Índices de busca criados');
+      } else {
+        console.warn('⚠️ [Preload] Cache não encontrado. Salvando no localStorage...');
+        
+        // Fallback para localStorage
+        try {
+          localStorage.setItem('lista_clientes', JSON.stringify(clientes));
+          localStorage.setItem('lista_clientes_timestamp', Date.now().toString());
+        } catch (e) {
+          console.error('❌ [Preload] Erro ao salvar em localStorage:', e);
         }
-
-        // Índice por nome (normalizado para busca)
-        if (cliente.nome_completo) {
-          const nomeNormalizado = cliente.nome_completo
-            .toLowerCase()
-            .normalize('NFD')
-            .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
-          
-          indicesPorNome[nomeNormalizado] = index;
-        }
-      });
-
-      // Salva índices
-      Cache.set('clientes_indice_cpf', indicesPorCPF, 30 * 60 * 1000);
-      Cache.set('clientes_indice_nome', indicesPorNome, 30 * 60 * 1000);
-
-      console.log('🔍 [Preload] Índices de busca criados');
+      }
 
     } catch (error) {
       // Não bloqueia o login se o preload falhar
@@ -164,25 +259,58 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
+  // FUNÇÕES DE FEEDBACK VISUAL
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  function mostrarErro(mensagem) {
+    console.error('❌ [Login] Erro:', mensagem);
+    
+    // Tenta usar UI.showToast se disponível
+    if (typeof UI !== 'undefined' && typeof UI.showToast === 'function') {
+      UI.showToast(mensagem, 'error');
+    } else {
+      // Fallback para alert
+      alert('Erro: ' + mensagem);
+    }
+  }
+
+  function mostrarSucesso(mensagem) {
+    console.log('✅ [Login] Sucesso:', mensagem);
+    
+    // Tenta usar UI.showToast se disponível
+    if (typeof UI !== 'undefined' && typeof UI.showToast === 'function') {
+      UI.showToast(mensagem, 'success');
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
   // UTILITÁRIOS
   // ═══════════════════════════════════════════════════════════════════════════
 
   // Auto-focus no email
-  emailInput.focus();
+  if (emailInput) {
+    emailInput.focus();
+  }
 
   // Enter no email vai para senha
-  emailInput.addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
-      e.preventDefault();
-      senhaInput.focus();
-    }
-  });
+  if (emailInput && senhaInput) {
+    emailInput.addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        senhaInput.focus();
+      }
+    });
+  }
 
   // Atalho: Ctrl+Enter para submit rápido
-  senhaInput.addEventListener('keydown', function(e) {
-    if (e.ctrlKey && e.key === 'Enter') {
-      e.preventDefault();
-      loginForm.dispatchEvent(new Event('submit'));
-    }
-  });
+  if (senhaInput) {
+    senhaInput.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.key === 'Enter') {
+        e.preventDefault();
+        loginForm.dispatchEvent(new Event('submit'));
+      }
+    });
+  }
+
+  console.log('✅ [Login] Script inicializado com sucesso');
 });
