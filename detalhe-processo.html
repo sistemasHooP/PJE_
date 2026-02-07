@@ -4,19 +4,19 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Detalhes do Processo - Sistema Jurídico RPPS</title>
-    
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    
+
     <!-- Fonte Inter -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
-    
+
     <!-- CSS Personalizado -->
     <link rel="stylesheet" href="css/style.css">
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        
+
         /* Estilo para a linha vertical da timeline */
         .timeline-line::before {
             content: '';
@@ -53,7 +53,7 @@
     </nav>
 
     <div class="flex h-screen overflow-hidden">
-        
+
         <!-- Sidebar (Desktop) -->
         <aside class="hidden md:flex flex-col w-64 bg-slate-900 text-white h-full shrink-0 shadow-xl z-20">
             <div class="p-6 border-b border-slate-800">
@@ -85,6 +85,10 @@
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
                     Processos
                 </a>
+                <a href="clientes.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
+                    Clientes
+                </a>
                 <a href="novo-processo.html" class="flex items-center gap-3 px-4 py-3 text-slate-400 hover:bg-slate-800 hover:text-white rounded-lg transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
                     Novo Processo
@@ -101,7 +105,7 @@
 
         <!-- Conteúdo Principal -->
         <main class="flex-1 h-full overflow-y-auto bg-slate-100 p-4 md:p-8 relative">
-            
+
             <!-- Link de Voltar -->
             <div class="mb-4">
                 <a href="processos.html" class="inline-flex items-center text-sm font-medium text-slate-500 hover:text-blue-700 transition-colors">
@@ -129,7 +133,7 @@
                             </p>
                         </div>
                     </div>
-                    
+
                     <div class="flex flex-col items-start md:items-end">
                         <div class="flex flex-col items-end">
                             <span id="proc-status" class="px-4 py-2 text-base font-bold rounded-lg border shadow-sm flex items-center gap-2 bg-slate-100 text-slate-500 uppercase tracking-wide">
@@ -163,7 +167,7 @@
 
             <!-- Layout Grid -->
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-                
+
                 <!-- Coluna Esquerda: Timeline -->
                 <div class="lg:col-span-2 space-y-6">
                     <div class="flex items-center justify-between px-2">
@@ -205,7 +209,7 @@
                                 <p class="text-xs text-slate-500">Registre um novo andamento</p>
                             </div>
                         </div>
-                        
+
                         <form id="form-movimentacao" class="space-y-5">
                             <div>
                                 <label class="block text-xs font-bold text-slate-700 uppercase mb-1 ml-1">Tipo de Ação</label>
@@ -293,6 +297,10 @@
             <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
             <span class="text-[10px] font-medium mt-1">Processos</span>
         </a>
+        <a href="clientes.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
+            <span class="text-[10px] font-medium mt-1">Clientes</span>
+        </a>
         <a href="novo-processo.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
             <div class="relative">
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
@@ -306,28 +314,28 @@
         <!-- Header do Modal -->
         <div class="flex justify-between items-center p-4 bg-slate-900 text-white border-b border-slate-800">
             <h3 id="file-viewer-title" class="text-sm font-medium truncate flex-1 pr-4">Visualizando Arquivo</h3>
-            
+
             <div class="flex items-center gap-3">
                 <!-- Botão Abrir Externo (Salvação para Mobile/PWA) -->
                 <!-- Este botão será configurado pelo JS -->
                 <a id="btn-open-external" href="#" target="_blank" class="p-2 bg-slate-800 rounded-full text-slate-300 hover:text-white hover:bg-slate-700 transition-colors" title="Abrir no Navegador/Drive">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14"></path></svg>
                 </a>
-                
+
                 <!-- Botão Fechar -->
                 <button onclick="closeFileViewer()" class="p-2 hover:bg-slate-800 rounded-full transition-colors text-slate-400 hover:text-white">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path></svg>
                 </button>
             </div>
         </div>
-        
+
         <!-- Área de Conteúdo (Com suporte a scroll no mobile) -->
         <div class="flex-1 relative bg-slate-200 overflow-hidden flex justify-center items-center">
             <div id="file-loader" class="absolute inset-0 flex flex-col items-center justify-center bg-slate-100 z-10">
                 <div class="animate-spin rounded-full h-10 w-10 border-4 border-slate-300 border-t-blue-600 mb-3"></div>
                 <p class="text-slate-500 text-sm font-medium">Carregando visualização...</p>
             </div>
-            
+
             <!-- Container de Scroll para Iframe (Fix para iOS) -->
             <div class="w-full h-full overflow-y-auto scroll-touch">
                 <iframe id="file-viewer-frame" class="w-full min-h-full border-0 hidden" src=""></iframe>

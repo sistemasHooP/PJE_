@@ -6,7 +6,7 @@
  * ============================================================================
  */
 
-const CACHE_NAME = 'rpps-juridico-v1';
+const CACHE_NAME = 'rpps-juridico-v4';
 
 // Lista de arquivos para salvar no celular (Cache)
 // Isso faz o app carregar instantaneamente nas próximas vezes
