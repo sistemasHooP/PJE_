@@ -1,181 +1,246 @@
 /**
- * API Client - Portal Jurídico
- * Comunicação com Google Apps Script (Web App)
- * Inclui autenticação JWT e cache inteligente
+ * ============================================================================
+ * ARQUIVO: js/api.js
+ * DESCRIÇÃO: Camada de comunicação com a API (Google Apps Script).
+ * VERSÃO: Completa (Com Cache Inteligente, Proxy de Download e Modo Silencioso).
+ * DEPENDÊNCIAS: js/config.js, js/utils.js
+ * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
+ * ============================================================================
  */
 
 const API = {
 
-    /**
-     * Base URL da API (Google Apps Script Web App)
-     * Esta configuração é carregada do config.js
-     */
-    baseUrl: window.CONFIG ? window.CONFIG.API_URL : '',
+    // =========================================================================
+    // CONFIGURAÇÃO DE CACHE (TTL POR AÇÃO)
+    // =========================================================================
+    // TTL em MINUTOS. Você pode ajustar conforme sua necessidade.
+    // Ideia:
+    // - listarClientes: deixa maior para não “travar” e não chamar a planilha toda hora.
+    // - dashboard / processos: menor para refletir mudanças com mais frequência.
+    CACHE_TTL_MINUTES: {
+        default: 5,
 
-    /**
-     * Faz uma requisição HTTP para a API
-     */
-    call: async function(action, data = {}, method = 'POST', isSilent = false) {
-        try {
-            if (!this.baseUrl) {
-                throw new Error('API_URL não configurada. Verifique config.js');
-            }
+        // Dashboard
+        getDashboard: 5,
 
-            // Mostra loading (se não for silencioso)
-            if (!isSilent) {
-                Utils.showLoading(true);
-            }
+        // Processos
+        listarProcessos: 10,
+        getProcessoDetalhe: 10,
 
-            const token = Auth.getToken();
-
-            const payload = {
-                action: action,
-                data: data,
-                token: token
-            };
-
-            const response = await fetch(this.baseUrl, {
-                method: method,
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(payload)
-            });
-
-            if (!response.ok) {
-                throw new Error(`Erro HTTP: ${response.status}`);
-            }
-
-            const result = await response.json();
-
-            if (!result.success) {
-                if (result.code === 'TOKEN_EXPIRED' || result.code === 'INVALID_TOKEN') {
-                    Auth.logout();
-                    throw new Error('Sua sessão expirou. Faça login novamente.');
-                }
-                throw new Error(result.error || 'Erro desconhecido');
-            }
-
-            return result.data;
-
-        } catch (error) {
-            console.error('Erro na API:', error);
-            throw error;
-        } finally {
-            if (!isSilent) {
-                Utils.showLoading(false);
-            }
-        }
+        // Clientes
+        listarClientes: 60,
+        buscarClientePorId: 30
     },
 
     /**
-     * Define o TTL do cache por ação.
-     * Ajuste aqui para equilibrar velocidade x atualização de dados.
-     * (Em minutos)
+     * Retorna o TTL em minutos para uma action específica.
      */
     getCacheTTL: function(action) {
-        const map = {
-            // Clientes mudam pouco, mas a lista é pesada: guardar mais tempo deixa tudo mais rápido
-            listarClientes: 60,
+        if (!action) return this.CACHE_TTL_MINUTES.default;
+        return this.CACHE_TTL_MINUTES[action] || this.CACHE_TTL_MINUTES.default;
+    },
 
-            // Processos podem mudar mais: cache menor
-            listarProcessos: 10,
+    /**
+     * Gera uma chave única e consistente para cache.
+     */
+    makeCacheKey: function(action, params) {
+        const safeParams = params || {};
+        return `${action}_${JSON.stringify(safeParams)}`;
+    },
 
-            // Dashboard costuma ser consultado o tempo todo
-            getDashboard: 5
-        };
+    /**
+     * Função genérica para enviar requisições ao Google Apps Script.
+     * Gerencia Loading, Autenticação, CORS e tratamento de Erros.
+     * * @param {string} action - Nome da ação definida no switch do Code.gs (ex: 'login').
+     * @param {Object} data - Objeto com os dados a serem enviados.
+     * @param {string} method - 'GET' ou 'POST' (Padrão: POST).
+     * @param {boolean} isSilent - Se TRUE, não exibe o Loading na tela (usado para background).
+     */
+    call: async function(action, data = {}, method = 'POST', isSilent = false) {
+        // 1. Inicia UI de carregamento (apenas se não for silencioso)
+        if (!isSilent) {
+            Utils.showLoading();
+        }
 
-        return map[action] || 5;
+        try {
+            // 2. Recupera token salvo (se houver) para autenticação
+            const token = sessionStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
+
+            // 3. Prepara o payload (dados)
+            // Adiciona a 'action' e o 'token' automaticamente no corpo da requisição
+            const payload = {
+                action: action,
+                token: token,
+                origem: window.location.origin,
+                ...data
+            };
+
+            // 4. Configuração da Requisição Fetch
+            let fetchOptions = {
+                method: method,
+                redirect: "follow", // Importante para redirecionamentos do Google
+            };
+
+            let url = CONFIG.API_URL;
+
+            if (method === 'POST') {
+                // TRUQUE CORS: Usamos text/plain para evitar Preflight OPTIONS request (CORS).
+                // O Apps Script (Code.gs) faz o JSON.parse manualmente.
+                fetchOptions.headers = {
+                    "Content-Type": "text/plain;charset=utf-8",
+                };
+                fetchOptions.body = JSON.stringify(payload);
+            } else {
+                // Se for GET, converte objeto em Query String
+                const params = new URLSearchParams();
+                for (const key in payload) {
+                    params.append(key, payload[key]);
+                }
+                url += "?" + params.toString();
+            }
+
+            // 5. Executa a chamada de rede
+            const response = await fetch(url, fetchOptions);
+
+            // 6. Verifica se a rede respondeu (HTTP 200)
+            if (!response.ok) {
+                throw new Error(`Erro de Rede: ${response.status} ${response.statusText}`);
+            }
+
+            // 7. Parse da resposta JSON do Apps Script
+            const result = await response.json();
+
+            // 8. Verifica se o Back-end retornou erro lógico (status: 'error')
+            if (result.status === 'error') {
+                // Tratamento especial para sessão expirada
+                if (result.message && (result.message.includes("Sessão expirada") || result.message.includes("Token inválido"))) {
+                    sessionStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
+                    sessionStorage.removeItem(CONFIG.STORAGE_KEYS.USER_DATA);
+
+                    // Só redireciona visualmente se não estivermos em background
+                    if (!isSilent) {
+                        Utils.showToast("Sessão expirada. Faça login novamente.", "warning");
+                        setTimeout(() => Utils.navigateTo(CONFIG.PAGES.LOGIN), 2000);
+                    }
+                    throw new Error("Sessão expirada"); // Interrompe fluxo
+                }
+                throw new Error(result.message);
+            }
+
+            // 9. Sucesso! Retorna apenas os dados úteis
+            return result.data;
+
+        } catch (error) {
+            console.error("API Error:", error);
+
+            // Evita mostrar toast se for erro de redirecionamento de sessão (já tratado)
+            // ou se for uma chamada silenciosa que falhou (o caller trata se quiser)
+            if (!isSilent && error.message !== "Sessão expirada") {
+                Utils.showToast(error.message || "Erro desconhecido ao comunicar com servidor.", "error");
+            }
+            throw error; // Repassa o erro para quem chamou poder tratar
+
+        } finally {
+            // 10. Remove bloqueio de tela
+            if (!isSilent) {
+                Utils.hideLoading();
+            }
+        }
     },
 
     /**
      * Cache Inteligente (Stale-While-Revalidate).
-     * Retorna dados do cache imediatamente e atualiza em background.
+     * Padrão SWR:
+     * 1. Retorna Cache imediatamente (callback com source='cache').
+     * 2. Busca na rede em background.
+     * 3. Retorna Rede atualizada (callback com source='network').
+     * * @param {string} action - Ação da API.
+     * @param {Object} params - Parâmetros da busca.
+     * @param {Function} onResult - Callback (data, source) => void.
+     * @param {boolean} forceSilent - Se true, força a chamada de rede a ser silenciosa (útil para preload).
      */
-    fetchWithCache: async function(action, params, callback, forceSilent = false) {
+    fetchWithCache: async function(action, params, onResult, forceSilent = false) {
 
-        // Cache key
-        const cacheKey = `${action}_${JSON.stringify(params)}`;
+        // Gera uma chave única para este pedido baseada nos parâmetros
+        const cacheKey = API.makeCacheKey(action, params);
 
-        // 1. Tenta cache
+        // 1. Tenta pegar do Cache Local
         const cachedData = Utils.Cache.get(cacheKey);
-        const hasCache = cachedData !== null;
+        const hasCache = !!cachedData;
 
         if (hasCache) {
-            callback(cachedData, 'cache');
+            console.log(`[API] Usando cache para: ${action}`);
+            // Retorna dados do cache para a tela desenhar RÁPIDO
+            onResult(cachedData, 'cache');
         }
 
-        // 2. Busca na rede (background)
         try {
-            const networkData = await this.call(action, params, 'POST', hasCache || forceSilent);
+            // 2. Busca dados frescos na rede
+            // Se forceSilent for true, respeita. Se não, decide baseado no cache (se tem cache, é silent).
+            const isSilent = forceSilent || hasCache;
 
-            // 3. Salva no cache para a próxima vez (TTL por ação)
-            const ttlMinutes = API.getCacheTTL(action);
-            Utils.Cache.set(cacheKey, networkData, ttlMinutes);
+            const networkData = await API.call(action, params, 'POST', isSilent);
 
-            // 4. Retorna dados atualizados
-            callback(networkData, 'network');
+            // 3. Salva no cache para a próxima vez (com TTL por action)
+            const ttl = API.getCacheTTL(action);
+            Utils.Cache.set(cacheKey, networkData, ttl);
+
+            // Retorna dados novos para a tela atualizar
+            onResult(networkData, 'network');
 
         } catch (err) {
-            console.warn('Falha na rede, mantendo cache:', err.message);
+            console.warn(`[API] Falha ao atualizar ${action} via rede. Mantendo cache se existir.`);
+            // Se falhar a rede e não tinha cache (e não foi forçado silent), o erro sobe para avisar o usuário
             if (!hasCache && !forceSilent) throw err;
         }
     },
 
-    /**
-     * Endpoints específicos
-     */
+    // --- MÉTODOS ESPECÍFICOS (Wrappers) ---
+    // Facilitam a chamada nos arquivos de página
+
     auth: {
-        login: async function(email, senha) {
-            return await API.call('login', { email, senha }, 'POST', false);
-        }
-    },
+        login: (email, senha) => API.call('login', { email, senha }),
 
-    dashboard: {
-        get: async function(onResult, silent) {
-            return await API.fetchWithCache('getDashboard', {}, onResult, silent);
-        }
-    },
-
-    clientes: {
-        listar: async function(onResult, silent) {
-            return await API.fetchWithCache('listarClientes', {}, onResult, silent);
-        },
-        cadastrar: async function(data, isSilent = false) {
-            return await API.call('cadastrarCliente', data, 'POST', isSilent);
-        },
-        buscarPorId: async function(id, isSilent = true) {
-            return await API.call('buscarClientePorId', { id: id }, 'POST', isSilent);
-        }
+        verificar: () => API.call('verificarToken', {}, 'POST') // Verificação sempre bate na rede
     },
 
     processos: {
-        listar: async function(filtros, onResult, silent) {
-            return await API.fetchWithCache('listarProcessos', filtros || {}, onResult, silent);
+        // Dashboard com Cache SWR
+        // Passamos 'silent' adiante para permitir o preload silencioso no login
+        dashboard: (onResult, silent = false) => API.fetchWithCache('getDashboard', {}, onResult, silent),
+
+        // Listagem com Cache SWR
+        listar: (filtros, onResult, silent = false) => API.fetchWithCache('listarProcessos', filtros, onResult, silent),
+
+        // Detalhe com Cache SWR
+        detalhar: (idProcesso, onResult) => API.fetchWithCache('getProcessoDetalhe', { id_processo: idProcesso }, onResult),
+
+        // Ações de Escrita (Sempre Network direto, sem cache de leitura)
+        criar: (dadosProcesso) => API.call('criarProcesso', dadosProcesso),
+    },
+
+    clientes: {
+        // Se receber callback, usa SWR (cache + rede). Se não, retorna Promise direto da rede.
+        listar: (onResult = null, silent = false) => {
+            if (typeof onResult === 'function') {
+                return API.fetchWithCache('listarClientes', {}, onResult, silent);
+            }
+            return API.call('listarClientes', {}, 'POST', true);
         },
-        criar: async function(data, isSilent = false) {
-            return await API.call('criarProcesso', data, 'POST', isSilent);
-        },
-        buscarPorId: async function(id, isSilent = false) {
-            return await API.call('buscarProcessoPorId', { id: id }, 'POST', isSilent);
-        },
-        atualizar: async function(data, isSilent = false) {
-            return await API.call('atualizarProcesso', data, 'POST', isSilent);
-        }
+        buscarPorId: (cliente_id) => API.call('buscarClientePorId', { cliente_id }, 'POST', true),
+        cadastrar: (dadosCliente) => API.call('cadastrarCliente', dadosCliente),
+        atualizar: (dadosCliente) => API.call('atualizarCliente', dadosCliente)
     },
 
     movimentacoes: {
-        listar: async function(processoId, onResult, silent) {
-            return await API.fetchWithCache('listarMovimentacoes', { processo_id: processoId }, onResult, silent);
-        },
-        adicionar: async function(data, isSilent = false) {
-            return await API.call('adicionarMovimentacao', data, 'POST', isSilent);
-        }
+        nova: (dadosMov) => API.call('novaMovimentacao', dadosMov)
     },
 
     drive: {
-        upload: async function(base64, fileName, folderId, isSilent = false) {
-            return await API.call('uploadArquivo', { base64, fileName, folderId }, 'POST', isSilent);
-        }
+        upload: (dadosArquivo) => API.call('uploadArquivo', dadosArquivo),
+
+        // [NOVO] Baixa arquivo via proxy do sistema (Base64)
+        // Isso permite visualizar sem estar logado no Google Drive
+        download: (fileData) => API.call('downloadArquivo', fileData)
     }
 };
