@@ -2,7 +2,7 @@
  * ============================================================================
  * ARQUIVO: js/utils.js
  * DESCRIÇÃO: Biblioteca de funções utilitárias do Front-End.
- * ATUALIZAÇÃO: Correção da função normalizeText e melhorias de UI.
+ * ATUALIZAÇÃO: Restauração de addSyncButton, máscaras e formatações de status.
  * ============================================================================
  */
 
@@ -42,34 +42,50 @@ const Utils = {
         }
     },
 
-    // --- FORMATAÇÃO ---
-    
-    formatCPF: function(cpf) {
-        if (!cpf) return '';
-        const v = String(cpf).replace(/\D/g, '');
-        if (v.length !== 11) return cpf;
-        return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    },
+    // --- INTERFACE (UI) ---
 
-    formatTelefone: function(tel) {
-        if (!tel) return '';
-        const v = String(tel).replace(/\D/g, '');
-        if (v.length === 11) return v.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-        if (v.length === 10) return v.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-        return tel;
-    },
+    /**
+     * Adiciona um botão flutuante ou fixo para sincronizar dados (limpar cache).
+     * Usado no Dashboard e Lista de Processos.
+     */
+    addSyncButton: function(callback) {
+        // Remove botão anterior se existir para evitar duplicidade
+        const existing = document.getElementById('fab-sync-btn');
+        if (existing) existing.remove();
 
-    formatDate: function(dateInput) {
-        if (!dateInput) return '';
-        const date = new Date(dateInput);
-        if (isNaN(date.getTime())) return dateInput;
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}/${month}/${year}`;
-    },
+        const btn = document.createElement('button');
+        btn.id = 'fab-sync-btn';
+        btn.className = 'fixed bottom-20 right-4 md:bottom-8 md:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg transition-all z-40 flex items-center justify-center group';
+        btn.innerHTML = `
+            <svg class="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
+            </svg>
+            <span class="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ml-2 transition-all duration-300 text-sm font-medium">Sincronizar</span>
+        `;
+        
+        btn.onclick = function() {
+            // Animação de rotação
+            const icon = btn.querySelector('svg');
+            icon.classList.add('animate-spin');
+            
+            // Limpa todo o cache relacionado a listas
+            Utils.Cache.clear('listar');
+            Utils.Cache.clear('getDashboard');
+            
+            // Feedback
+            Utils.showToast("Sincronizando dados...", "info");
+            
+            // Executa a função de recarga da página
+            if (typeof callback === 'function') {
+                callback().then(() => {
+                    setTimeout(() => icon.classList.remove('animate-spin'), 500);
+                    Utils.showToast("Dados atualizados!", "success");
+                });
+            }
+        };
 
-    // --- UI HELPERS ---
+        document.body.appendChild(btn);
+    },
 
     showToast: function(message, type = 'info') {
         const existing = document.getElementById('toast-notification');
@@ -103,19 +119,26 @@ const Utils = {
         }, 3000);
     },
 
-    showLoading: function(message = 'Carregando...') {
+    showLoading: function(message = 'Carregando...', iconType = 'default') {
         const existing = document.getElementById('global-loader');
         if (existing) return;
+
+        let svgIcon = '';
+        if (iconType === 'database') {
+            svgIcon = '<svg class="animate-bounce h-10 w-10 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>';
+        } else {
+            svgIcon = `<svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                       </svg>`;
+        }
 
         const loader = document.createElement('div');
         loader.id = 'global-loader';
         loader.className = 'fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300';
         loader.innerHTML = `
             <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce-small">
-                <svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                </svg>
+                ${svgIcon}
                 <span class="text-slate-700 font-semibold text-sm tracking-wide">${message}</span>
             </div>
         `;
@@ -132,5 +155,83 @@ const Utils = {
 
     navigateTo: function(page) {
         window.location.href = page;
+    },
+
+    // --- FORMATAÇÃO DE DADOS ---
+    
+    formatCPF: function(cpf) {
+        if (!cpf) return '';
+        const v = String(cpf).replace(/\D/g, '');
+        if (v.length !== 11) return cpf;
+        return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
+    },
+
+    formatTelefone: function(tel) {
+        if (!tel) return '';
+        const v = String(tel).replace(/\D/g, '');
+        if (v.length === 11) return v.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
+        if (v.length === 10) return v.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
+        return tel;
+    },
+
+    formatDate: function(dateInput) {
+        if (!dateInput) return '';
+        const date = new Date(dateInput);
+        if (isNaN(date.getTime())) return dateInput;
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    },
+
+    // --- HELPERS DE STATUS (Processos) ---
+
+    getStatusClass: function(status) {
+        if (!status) return 'bg-slate-100 text-slate-800 border-slate-200';
+        const s = String(status).toUpperCase().trim();
+        
+        switch (s) {
+            case 'EM ANDAMENTO': return 'bg-blue-100 text-blue-800 border-blue-200';
+            case 'JULGADO': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
+            case 'ARQUIVADO': return 'bg-slate-100 text-slate-600 border-slate-200';
+            case 'SOBRESTADO': return 'bg-amber-100 text-amber-800 border-amber-200';
+            case 'CANCELADO': return 'bg-red-100 text-red-800 border-red-200';
+            default: return 'bg-slate-100 text-slate-800 border-slate-200';
+        }
+    },
+
+    getStatusLabel: function(status) {
+        const map = {
+            'EM ANDAMENTO': 'Processo fluindo normalmente.',
+            'JULGADO': 'Decisão final proferida.',
+            'SOBRESTADO': 'Pausado aguardando decisão externa.',
+            'ARQUIVADO': 'Processo finalizado e guardado.',
+            'CANCELADO': 'Processo anulado ou desistência.'
+        };
+        return map[String(status).toUpperCase()] || 'Status do processo.';
+    },
+
+    // --- MÁSCARAS DE INPUT (UX) ---
+
+    maskCPFInput: function(e) {
+        let v = e.target.value.replace(/\D/g, '');
+        v = v.substring(0, 11);
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d)/, '$1.$2');
+        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
+        e.target.value = v;
+    },
+
+    maskPhoneInput: function(e) {
+        let v = e.target.value.replace(/\D/g, '');
+        v = v.substring(0, 11);
+        if (v.length > 10) { // Celular 11 dígitos
+            v = v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
+        } else if (v.length > 5) {
+            v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
+        } else if (v.length > 2) {
+            v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
+        }
+        e.target.value = v;
     }
 };
