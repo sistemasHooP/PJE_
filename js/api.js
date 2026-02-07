@@ -27,7 +27,7 @@ const API = {
         try {
             // 2. Recupera token salvo (se houver) para autenticação
             const token = sessionStorage.getItem(CONFIG.STORAGE_KEYS.TOKEN);
-            
+
             // 3. Prepara o payload (dados)
             // Adiciona a 'action' e o 'token' automaticamente no corpo da requisição
             const payload = {
@@ -49,7 +49,7 @@ const API = {
                 // TRUQUE CORS: Usamos text/plain para evitar Preflight OPTIONS request (CORS).
                 // O Apps Script (Code.gs) faz o JSON.parse manualmente.
                 fetchOptions.headers = {
-                    "Content-Type": "text/plain;charset=utf-8", 
+                    "Content-Type": "text/plain;charset=utf-8",
                 };
                 fetchOptions.body = JSON.stringify(payload);
             } else {
@@ -78,7 +78,7 @@ const API = {
                 if (result.message && (result.message.includes("Sessão expirada") || result.message.includes("Token inválido"))) {
                     sessionStorage.removeItem(CONFIG.STORAGE_KEYS.TOKEN);
                     sessionStorage.removeItem(CONFIG.STORAGE_KEYS.USER_DATA);
-                    
+
                     // Só redireciona visualmente se não estivermos em background
                     if (!isSilent) {
                         Utils.showToast("Sessão expirada. Faça login novamente.", "warning");
@@ -94,7 +94,7 @@ const API = {
 
         } catch (error) {
             console.error("API Error:", error);
-            
+
             // Evita mostrar toast se for erro de redirecionamento de sessão (já tratado)
             // ou se for uma chamada silenciosa que falhou (o caller trata se quiser)
             if (!isSilent && error.message !== "Sessão expirada") {
@@ -124,7 +124,7 @@ const API = {
     fetchWithCache: async function(action, params, onResult, forceSilent = false) {
         // Gera uma chave única para este pedido baseada nos parâmetros
         const cacheKey = `${action}_${JSON.stringify(params)}`;
-        
+
         // 1. Tenta pegar do Cache Local
         const cachedData = Utils.Cache.get(cacheKey);
         const hasCache = !!cachedData;
@@ -132,14 +132,14 @@ const API = {
         if (hasCache) {
             console.log(`[API] Usando cache para: ${action}`);
             // Retorna dados do cache para a tela desenhar RÁPIDO
-            onResult(cachedData, 'cache'); 
+            onResult(cachedData, 'cache');
         }
 
         try {
             // 2. Busca dados frescos na rede
             // Se forceSilent for true, respeita. Se não, decide baseado no cache (se tem cache, é silent).
             const isSilent = forceSilent || hasCache;
-            
+
             const networkData = await API.call(action, params, 'POST', isSilent);
 
             // 3. Salva no cache para a próxima vez
@@ -151,7 +151,7 @@ const API = {
         } catch (err) {
             console.warn(`[API] Falha ao atualizar ${action} via rede. Mantendo cache se existir.`);
             // Se falhar a rede e não tinha cache (e não foi forçado silent), o erro sobe para avisar o usuário
-            if (!hasCache && !forceSilent) throw err; 
+            if (!hasCache && !forceSilent) throw err;
         }
     },
 
@@ -160,9 +160,10 @@ const API = {
 
     auth: {
         login: (email, senha) => API.call('login', { email, senha }),
-        
+
         verificar: () => API.call('verificarToken', {}, 'POST') // Verificação sempre bate na rede
     },
+
 
     processos: {
         // Dashboard com Cache SWR
@@ -171,12 +172,24 @@ const API = {
 
         // Listagem com Cache SWR
         listar: (filtros, onResult, silent = false) => API.fetchWithCache('listarProcessos', filtros, onResult, silent),
-        
+
         // Detalhe com Cache SWR
         detalhar: (idProcesso, onResult) => API.fetchWithCache('getProcessoDetalhe', { id_processo: idProcesso }, onResult),
-        
+
         // Ações de Escrita (Sempre Network direto, sem cache de leitura)
         criar: (dadosProcesso) => API.call('criarProcesso', dadosProcesso),
+    },
+
+    clientes: {
+        // Se receber callback, usa SWR (cache + rede). Se não, retorna Promise direto da rede.
+        listar: (onResult = null, silent = false) => {
+            if (typeof onResult === 'function') {
+                return API.fetchWithCache('listarClientes', {}, onResult, silent);
+            }
+            return API.call('listarClientes', {}, 'POST', true);
+        },
+        cadastrar: (dadosCliente) => API.call('cadastrarCliente', dadosCliente),
+        atualizar: (dadosCliente) => API.call('atualizarCliente', dadosCliente)
     },
 
     movimentacoes: {
@@ -185,7 +198,7 @@ const API = {
 
     drive: {
         upload: (dadosArquivo) => API.call('uploadArquivo', dadosArquivo),
-        
+
         // [NOVO] Baixa arquivo via proxy do sistema (Base64)
         // Isso permite visualizar sem estar logado no Google Drive
         download: (fileData) => API.call('downloadArquivo', fileData)

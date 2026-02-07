@@ -79,8 +79,10 @@
         const tbody = document.getElementById('lista-clientes');
         tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Carregando clientes...</td></tr>';
         try {
-            clientes = await API.clientes.listar();
-            renderClientes(document.getElementById('busca-clientes').value || '');
+            await API.clientes.listar(function(resultado) {
+                clientes = Array.isArray(resultado) ? resultado : [];
+                renderClientes(document.getElementById('busca-clientes').value || '');
+            });
         } catch (e) {
             tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-red-500">Erro ao carregar clientes.</td></tr>';
         }
