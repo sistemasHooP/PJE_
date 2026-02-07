@@ -111,6 +111,13 @@ const ClienteAPI = {
      */
     downloadArquivo: function(fileUrl) {
         return this.call('downloadArquivoCliente', { fileUrl: fileUrl }, true);
+    },
+
+    /**
+     * Lista arquivos da pasta do processo (proxy sem login Google).
+     */
+    listarArquivosProcesso: function(idProcesso) {
+        return this.call('listarArquivosProcessoCliente', { id_processo: idProcesso }, true);
     }
 };
 
