@@ -2,9 +2,8 @@
  * ============================================================================
  * ARQUIVO: js/novo-processo.js
  * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Captura e envio do E-mail do Interessado.
+ * ATUALIZAÇÃO: Feedback visual (Loader) ao selecionar cliente e autopreenchimento.
  * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
- * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
  * ============================================================================
  */
 
@@ -32,129 +31,185 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 4. Configurar Data Padrão
+    // 4. Configurar Data Padrão (Hoje)
     const dataInput = document.getElementById('data_entrada');
     if (dataInput && !dataInput.value) {
-        // Define hoje como padrão
-        const hoje = new Date().toISOString().split('T')[0];
-        dataInput.value = hoje;
+        dataInput.valueAsDate = new Date();
     }
 
-    // 5. Lógica do Campo "Outros" (Mostrar/Esconder)
-    const tipoSelect = document.getElementById('tipo');
-    const divOutros = document.getElementById('div-tipo-outro');
-    const inputOutros = document.getElementById('tipo_outro');
-
-    if (tipoSelect && divOutros && inputOutros) {
-        tipoSelect.addEventListener('change', function() {
-            if (this.value === 'OUTROS') {
-                // Mostra o campo e torna obrigatório
-                divOutros.classList.remove('hidden');
-                inputOutros.setAttribute('required', 'true');
-                inputOutros.focus();
-            } else {
-                // Esconde, limpa e remove obrigatoriedade
-                divOutros.classList.add('hidden');
-                inputOutros.removeAttribute('required');
-                inputOutros.value = '';
-            }
-        });
-    }
-
-    // 6. Manipular Envio do Formulário
-    const form = document.getElementById('form-novo-processo');
-    if (form) {
-        form.addEventListener('submit', handleFormSubmit);
-    }
+    // 5. Inicializar Funcionalidades
+    setupMascaras();
+    carregarClientesParaSelect();
+    setupFormulario();
 });
 
 /**
- * Processa o envio dos dados.
+ * Carrega a lista de clientes para o Dropdown (Select).
+ * Usa Cache para ser rápido, mas permite buscar detalhes depois.
  */
-async function handleFormSubmit(e) {
-    e.preventDefault();
+function carregarClientesParaSelect() {
+    const select = document.getElementById('select-cliente');
+    if (!select) return; // Se não tiver o select na tela, ignora
 
-    // Referências aos campos
-    const numeroProcesso = document.getElementById('numero_processo').value.trim();
-    const parteNome = document.getElementById('parte_nome').value.trim();
-    const emailInteressado = document.getElementById('email_interessado').value.trim(); // [NOVO]
-    const tipoSelect = document.getElementById('tipo');
-    const inputOutros = document.getElementById('tipo_outro');
-    const dataEntrada = document.getElementById('data_entrada').value;
-    const descricao = document.getElementById('descricao').value.trim();
+    // Usa a API com Cache (SWR)
+    API.clientes.listar((data, source) => {
+        // Limpa opções antigas (mantendo a primeira "Selecione...")
+        select.innerHTML = '<option value="">-- Selecione um Cliente Cadastrado --</option>';
+        
+        if (data && data.length > 0) {
+            // Ordena alfabeticamente
+            data.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
 
-    // Lógica para definir o Tipo final
-    let tipoFinal = tipoSelect.value;
-    
-    // Se selecionou OUTROS, usa o valor do input de texto
-    if (tipoFinal === 'OUTROS') {
-        tipoFinal = inputOutros.value.trim().toUpperCase(); // Salva em maiúsculo para padronizar
-        if (!tipoFinal) {
-            Utils.showToast("Por favor, especifique o tipo do processo.", "warning");
-            inputOutros.focus();
+            data.forEach(cliente => {
+                const option = document.createElement('option');
+                option.value = cliente.id; // ID do cliente
+                option.textContent = `${cliente.nome_completo} (CPF: ${cliente.cpf})`;
+                select.appendChild(option);
+            });
+        }
+    }, true); // true = silencioso (não mostra loader global só pra carregar a lista)
+
+    // --- AQUI ESTÁ A CORREÇÃO DO UX ---
+    // Evento de mudança no Select
+    select.addEventListener('change', async function() {
+        const clienteId = this.value;
+        
+        if (!clienteId) {
+            limparCamposCliente();
             return;
         }
-    }
 
-    // Validação básica
-    if (!numeroProcesso || !parteNome || !tipoFinal || !dataEntrada) {
-        Utils.showToast("Preencha todos os campos obrigatórios.", "warning");
-        return;
-    }
+        // MOSTRA O LOADER AGORA (Feedback Visual)
+        Utils.showLoading("Buscando dados do cliente...");
 
-    // Monta o objeto para envio
-    const payload = {
-        numero_processo: numeroProcesso,
-        parte_nome: parteNome,
-        email_interessado: emailInteressado, // [NOVO] Envia para o Back-end
-        tipo: tipoFinal,
-        data_entrada: dataEntrada,
-        descricao: descricao
-    };
+        try {
+            // Busca dados completos do cliente (pode demorar 2-3s)
+            const clienteCompleto = await API.clientes.buscarPorId(clienteId);
 
-    try {
-        // PERSONALIZAÇÃO 1: Mensagem de Criação
-        // O setTimeout(0) garante que nossa mensagem sobrescreva a padrão "Carregando..."
-        setTimeout(() => Utils.showLoading("Criando pasta digital..."), 0);
-
-        // Envia para a API e aguarda a resposta (que contém o ID do novo processo)
-        const resultado = await API.processos.criar(payload);
-        
-        // --- CRÍTICO: LIMPEZA DE CACHE ---
-        // Força a atualização das listas quando o usuário voltar para elas
-        Utils.Cache.clear('listarProcessos');
-        Utils.Cache.clear('getDashboard');
-
-        // Sucesso!
-        Utils.showToast("Processo criado com sucesso!", "success");
-
-        // PERSONALIZAÇÃO 2: Mensagem de Abertura
-        Utils.showLoading("Abrindo processo jurídico...");
-
-        // Redireciona
-        setTimeout(() => {
-            // Se a API retornou o ID, vai direto para o detalhe
-            if (resultado && resultado.id) {
-                Utils.navigateTo(`detalhe-processo.html?id=${resultado.id}`);
+            if (clienteCompleto) {
+                preencherCamposCliente(clienteCompleto);
+                Utils.showToast("Dados do cliente carregados.", "info");
             } else {
-                // Fallback: Se por algum motivo não vier ID, vai para a lista
-                Utils.navigateTo('processos.html');
+                Utils.showToast("Cliente não encontrado.", "error");
             }
-        }, 1500);
 
-    } catch (error) {
-        console.error("Erro ao criar processo:", error);
-        // Garante que o loader saia se der erro
-        Utils.hideLoading();
-        
-        if (error.message.includes("Já existe")) {
-            Utils.showToast(error.message, "error");
-            const campoNumero = document.getElementById('numero_processo');
-            campoNumero.focus();
-            campoNumero.classList.add('border-red-500');
-            setTimeout(() => campoNumero.classList.remove('border-red-500'), 3000);
-        } else {
-            Utils.showToast("Erro ao criar processo. Tente novamente.", "error");
+        } catch (error) {
+            console.error(error);
+            Utils.showToast("Erro ao buscar detalhes do cliente.", "error");
+        } finally {
+            // ESCONDE O LOADER
+            Utils.hideLoading();
         }
+    });
+}
+
+function preencherCamposCliente(cliente) {
+    setValue('parte_nome', cliente.nome_completo);
+    setValue('cpf', cliente.cpf);
+    setValue('email', cliente.email);
+    setValue('telefone', cliente.telefone);
+}
+
+function limparCamposCliente() {
+    setValue('parte_nome', '');
+    setValue('cpf', '');
+    setValue('email', '');
+    setValue('telefone', '');
+}
+
+function setValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) el.value = value || '';
+}
+
+function setupMascaras() {
+    // Máscara CPF
+    const cpfInput = document.getElementById('cpf');
+    if (cpfInput) {
+        cpfInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '').substring(0, 11);
+            if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
+            else if (value.length > 6) value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
+            else if (value.length > 3) value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
+            e.target.value = value;
+        });
     }
+
+    // Máscara Telefone
+    const telInput = document.getElementById('telefone');
+    if (telInput) {
+        telInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, '').substring(0, 11);
+            if (value.length > 6) value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
+            else if (value.length > 2) value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
+            e.target.value = value;
+        });
+    }
+}
+
+function setupFormulario() {
+    const form = document.querySelector('form');
+    if (!form) return;
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Dados do Formulário
+        const dados = {
+            numero_processo: document.getElementById('numero_processo').value,
+            parte_nome: document.getElementById('parte_nome').value,
+            cpf: document.getElementById('cpf').value,
+            email: document.getElementById('email').value,
+            telefone: document.getElementById('telefone').value,
+            tipo: document.getElementById('tipo_acao').value,
+            data_entrada: document.getElementById('data_entrada').value,
+            data_prazo: document.getElementById('data_prazo').value || '',
+            status: 'EM ANDAMENTO' // Status inicial padrão
+        };
+
+        // Validação Básica
+        if (!dados.numero_processo || !dados.parte_nome || !dados.cpf) {
+            Utils.showToast("Preencha os campos obrigatórios (*)", "warning");
+            return;
+        }
+
+        try {
+            Utils.showLoading("Criando processo e pastas...");
+
+            // Chama API
+            const resultado = await API.processos.criar(dados);
+
+            // --- CRÍTICO: LIMPEZA DE CACHE ---
+            // Força a atualização das listas quando o usuário voltar para elas
+            Utils.Cache.clear('listarProcessos');
+            Utils.Cache.clear('getDashboard');
+
+            Utils.showToast("Processo criado com sucesso!", "success");
+
+            // Redireciona para o detalhe
+            setTimeout(() => {
+                if (resultado && resultado.id) {
+                    Utils.navigateTo(`detalhe-processo.html?id=${resultado.id}`);
+                } else {
+                    Utils.navigateTo('processos.html');
+                }
+            }, 1000);
+
+        } catch (error) {
+            console.error("Erro ao criar processo:", error);
+            Utils.hideLoading(); // Garante que o loader saia se der erro
+            
+            if (error.message.includes("Já existe")) {
+                Utils.showToast(error.message, "error");
+                const campoNumero = document.getElementById('numero_processo');
+                if(campoNumero) {
+                    campoNumero.focus();
+                    campoNumero.classList.add('border-red-500');
+                    setTimeout(() => campoNumero.classList.remove('border-red-500'), 3000);
+                }
+            } else {
+                Utils.showToast(error.message || "Erro ao criar processo.", "error");
+            }
+        }
+    });
 }
