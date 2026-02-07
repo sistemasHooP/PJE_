@@ -2,31 +2,28 @@
  * ============================================================================
  * ARQUIVO: js/novo-processo.js
  * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Correção Definitiva de escapeHtml e Loader.
+ * ATUALIZAÇÃO: Correção de erro global e Feedback via Notificação (Toast).
  * ============================================================================
  */
 
-// --- CORREÇÃO GLOBAL IMEDIATA (Executa antes de tudo) ---
-// Define escapeHtml no escopo global (window) para que o HTML consiga enxergar.
-(function() {
-    window.escapeHtml = function(text) {
-        if (!text) return '';
-        return String(text)
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
-    };
-    console.log("Função escapeHtml registrada globalmente com sucesso.");
-})();
+// 1. CORREÇÃO GLOBAL IMEDIATA (Evita o erro "escapeHtml is not defined")
+// Define a função no escopo global window para que o HTML consiga acessá-la.
+window.escapeHtml = function(text) {
+    if (!text) return '';
+    return String(text)
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+};
 
 document.addEventListener('DOMContentLoaded', function() {
 
-    // 1. Proteção de Rota
+    // 2. Proteção de Rota
     if (!Auth.protectRoute()) return;
 
-    // 2. Atualizar UI do Usuário
+    // 3. Atualizar UI do Usuário
     Auth.updateUserInfoUI();
     const user = Auth.getUser();
     if (user && user.nome) {
@@ -35,7 +32,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (avatarEl) avatarEl.textContent = initials;
     }
 
-    // 3. Configurar Logout Desktop
+    // 4. Configurar Logout Desktop
     const btnLogoutDesktop = document.getElementById('desktop-logout-btn');
     if (btnLogoutDesktop) {
         btnLogoutDesktop.addEventListener('click', function() {
@@ -45,13 +42,13 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 4. Configurar Data Padrão (Hoje)
+    // 5. Configurar Data Padrão
     const dataInput = document.getElementById('data_entrada');
     if (dataInput && !dataInput.value) {
         dataInput.valueAsDate = new Date();
     }
 
-    // 5. Inicializar Funcionalidades
+    // 6. Inicializar Funcionalidades
     setupMascaras();
     carregarClientesParaSelect();
     setupFormulario();
@@ -69,7 +66,6 @@ function carregarClientesParaSelect() {
         select.innerHTML = '<option value="">-- Selecione um Cliente Cadastrado --</option>';
         
         if (data && data.length > 0) {
-            // Ordena
             data.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
 
             data.forEach(cliente => {
@@ -81,7 +77,7 @@ function carregarClientesParaSelect() {
         }
     }, true);
 
-    // --- LÓGICA DE SELEÇÃO COM LOADER FORÇADO ---
+    // --- LÓGICA DE SELEÇÃO COM NOTIFICAÇÃO ---
     select.addEventListener('change', async function() {
         const clienteId = this.value;
 
@@ -90,21 +86,23 @@ function carregarClientesParaSelect() {
             return;
         }
 
-        // 1. Força o Loader a aparecer (criando elemento se precisar)
-        // Usamos um loader local caso o Utils.showLoading esteja falhando visualmente
-        Utils.showLoading("Buscando dados do cliente...");
+        // 1. Feedback Imediato: Notificação Amarela ("Aguarde...")
+        // Usa o mesmo estilo visual da notificação de sucesso, mas indicando processamento.
+        Utils.showToast("⏳ Buscando dados do cliente...", "warning");
         
-        // 2. PAUSA OBRIGATÓRIA (150ms)
-        // Isso dá tempo ao navegador para renderizar o loader antes de travar no processamento
-        await new Promise(resolve => setTimeout(resolve, 150));
+        // Pequena pausa para garantir que a interface atualize antes de processar
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         try {
-            // 3. Busca na API
-            console.log("Buscando detalhes do cliente ID:", clienteId);
+            // 2. Busca na API
             const clienteCompleto = await API.clientes.buscarPorId(clienteId);
 
             if (clienteCompleto) {
                 preencherCamposCliente(clienteCompleto);
+                
+                // 3. Feedback Final: Notificação Verde ("Sucesso")
+                // Substitui a notificação de "Buscando"
+                Utils.showToast("✅ Cliente carregado com sucesso!", "success");
             } else {
                 Utils.showToast("Cliente não encontrado.", "error");
                 limparCamposCliente();
@@ -112,10 +110,7 @@ function carregarClientesParaSelect() {
 
         } catch (error) {
             console.error("Erro ao buscar cliente:", error);
-            Utils.showToast("Erro ao buscar detalhes.", "error");
-        } finally {
-            // 4. Remove o Loader
-            Utils.hideLoading();
+            Utils.showToast("Erro ao comunicar com o servidor.", "error");
         }
     });
 }
