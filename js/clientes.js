@@ -33,12 +33,18 @@
             });
         }
 
-        document.getElementById('btn-atualizar-clientes').addEventListener('click', carregarClientes);
+        // Botão Atualizar (Manual)
+        document.getElementById('btn-atualizar-clientes').addEventListener('click', function() {
+            // Força limpeza do cache para buscar da rede
+            Utils.Cache.clear('listarClientes'); 
+            carregarClientes(); 
+        });
 
         document.getElementById('busca-clientes').addEventListener('input', function() {
             renderClientes(this.value);
         });
 
+        // Máscaras de Input
         document.getElementById('cliente-cpf').addEventListener('input', function(e) {
             let value = e.target.value.replace(/\D/g, '').substring(0, 11);
             if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
@@ -54,6 +60,7 @@
             e.target.value = value;
         });
 
+        // Cadastro de Novo Cliente
         document.getElementById('form-cliente').addEventListener('submit', async function(e) {
             e.preventDefault();
 
@@ -66,10 +73,20 @@
 
             try {
                 Utils.showLoading("Cadastrando cliente...");
+                
                 await API.clientes.cadastrar(payload);
+                
+                // --- PULO DO GATO (CORREÇÃO) ---
+                // Limpa o cache global de clientes.
+                // Isso obriga a tela de "Novo Processo" a baixar a lista atualizada na próxima vez.
+                Utils.Cache.clear('listarClientes');
+                
                 Utils.showToast('Cliente cadastrado com sucesso!', 'success');
                 e.target.reset();
-                carregarClientes();
+                
+                // Recarrega a lista para aparecer na tabela imediatamente
+                carregarClientes(); 
+
             } catch (err) {
                 Utils.showToast(err.message || 'Erro ao cadastrar cliente.', 'error');
             } finally {
@@ -78,36 +95,46 @@
         });
     }
 
-    async function carregarClientes() {
+    /**
+     * Carrega a lista usando o sistema SWR (Cache Primeiro -> Depois Rede)
+     * Isso recupera o preload feito no Login e atualiza o cache para outras telas.
+     */
+    function carregarClientes() {
         const tbody = document.getElementById('lista-clientes');
         const btnRefresh = document.getElementById('btn-atualizar-clientes');
         const iconRefresh = document.getElementById('icon-refresh');
+        const buscaInput = document.getElementById('busca-clientes');
 
-        // UI INICIAL (Feedback de carregamento)
-        tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Carregando clientes...</td></tr>';
-        
+        // UI de Carregamento (só se estiver vazio)
+        if (clientes.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Carregando clientes...</td></tr>';
+        }
+
         if (btnRefresh) btnRefresh.disabled = true;
         if (iconRefresh) iconRefresh.classList.add('animate-spin');
 
-        try {
-            // Se passar callback, a API usa cache + rede. 
-            // Mas aqui queremos forçar atualização da lista, então chamamos sem callback para usar o Promise direto da API (que no api.js está configurado para refresh se não passar callback, ou ajustamos aqui).
-            // NOTA: Conforme seu api.js, API.clientes.listar retorna Promise.
-            
-            clientes = await API.clientes.listar();
-            renderClientes(document.getElementById('busca-clientes').value || '');
-            
-            // Pequeno toast para confirmar
-            if(btnRefresh) Utils.showToast("Lista de clientes atualizada.", "info");
+        // Usa a versão com Callback do API.js para ativar o Cache Inteligente
+        API.clientes.listar((data, source) => {
+            console.log(`[Clientes] Dados recebidos via: ${source}`);
 
-        } catch (e) {
-            console.error(e);
-            tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-red-500">Erro ao carregar clientes.</td></tr>';
-        } finally {
-            // UI FINAL (Restaura botões)
-            if (btnRefresh) btnRefresh.disabled = false;
-            if (iconRefresh) iconRefresh.classList.remove('animate-spin');
-        }
+            if (data) {
+                clientes = data;
+                renderClientes(buscaInput.value || '');
+            }
+
+            // Se a fonte for 'network', significa que o processo terminou (ou falhou a rede mas já tínhamos cache)
+            // Se a fonte for 'cache', ainda estamos esperando a rede atualizar em background
+            if (source === 'network' || !data) {
+                if (btnRefresh) btnRefresh.disabled = false;
+                if (iconRefresh) iconRefresh.classList.remove('animate-spin');
+                
+                // Feedback visual discreto que atualizou da rede
+                if (source === 'network' && btnRefresh) {
+                     // Pequeno flash verde no botão ou toast opcional
+                }
+            }
+
+        }, false); // false = não silencioso (usa loading global se não tiver cache)
     }
 
     function renderClientes(termo) {
@@ -132,12 +159,12 @@
         }
 
         tbody.innerHTML = filtrados.map(function(c) {
-            return '<tr class="border-b border-slate-100">' +
-                '<td class="py-2 text-slate-800 font-medium">' + escapeHtml(c.nome_completo || '-') + '</td>' +
-                '<td class="py-2">' + escapeHtml(c.cpf || '-') + '</td>' +
-                '<td class="py-2">' + escapeHtml(c.email || '-') + '</td>' +
-                '<td class="py-2">' + escapeHtml(c.telefone || '-') + '</td>' +
-                '<td class="py-2"><span class="px-2 py-1 rounded text-xs bg-slate-100 text-slate-700">' + escapeHtml(c.status || '-') + '</span></td>' +
+            return '<tr class="border-b border-slate-100 hover:bg-slate-50 transition-colors">' +
+                '<td class="py-2 px-2 text-slate-800 font-medium">' + escapeHtml(c.nome_completo || '-') + '</td>' +
+                '<td class="py-2 px-2">' + escapeHtml(c.cpf || '-') + '</td>' +
+                '<td class="py-2 px-2">' + escapeHtml(c.email || '-') + '</td>' +
+                '<td class="py-2 px-2">' + escapeHtml(c.telefone || '-') + '</td>' +
+                '<td class="py-2 px-2"><span class="px-2 py-1 rounded text-xs bg-slate-100 text-slate-700 font-semibold">' + escapeHtml(c.status || '-') + '</span></td>' +
                 '</tr>';
         }).join('');
     }
