@@ -6,7 +6,7 @@
  * ============================================================================
  */
 
-const CACHE_NAME = 'rpps-juridico-v2';
+const CACHE_NAME = 'rpps-juridico-v1';
 
 // Lista de arquivos para salvar no celular (Cache)
 // Isso faz o app carregar instantaneamente nas próximas vezes
@@ -63,7 +63,7 @@ self.addEventListener('activate', (event) => {
 // Estratégia: Cache First, Network Fallback (Para arquivos estáticos)
 // Para API (script.google.com), sempre vai na rede.
 self.addEventListener('fetch', (event) => {
-
+  
   // Ignora requisições para a API do Google (sempre rede)
   if (event.request.url.includes('script.google.com')) {
     return;
