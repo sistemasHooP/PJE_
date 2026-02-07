@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  * ARQUIVO: js/clientes.js
- * DESCRIÇÃO: Tela de Clientes (performance + cache + animações + sincronização)
+ * DESCRIÇÃO: Tela de Clientes (performance + cache + animação + sincronização)
  * DEPENDÊNCIAS: js/config.js, js/utils.js, js/api.js, js/auth.js
  * ============================================================================
  */
@@ -16,15 +16,15 @@
     let renderJobId = 0;
     let isFetching = false;
 
-    // TTL maior para clientes (minutos) — reduz “sumir cache” e deixa o app mais ágil
+    // TTL maior para clientes (minutos) — reduz “lag” e chamadas repetidas
     const TTL_CLIENTES_MIN = 60;
 
-    // Chave do cache (mesma regra do API.fetchWithCache: `${action}_${JSON.stringify(params)}`)
+    // Chave do cache (padrão do API.fetchWithCache: `${action}_${JSON.stringify(params)}`)
     function getClientesCacheKey() {
-        return `listarClientes_${JSON.stringify({})}`;
+        return "listarClientes_" + JSON.stringify({});
     }
 
-    // Canal de sincronização entre abas (opcional, mas ajuda muito)
+    // Sincronização entre abas / páginas
     const SYNC_CHANNEL = "rpps_juridico_sync";
     const STORAGE_SYNC_KEY = "rpps_clientes_last_update";
 
@@ -40,15 +40,16 @@
         bindEventos();
         iniciarListenersSync();
 
-        // 1) Renderiza IMEDIATO do cache, se existir (zero “sensação de travado”)
+        // 1) Renderiza IMEDIATO do cache, se existir (sem “sensação de travado”)
         const tinhaCache = hidratarDoCache();
 
-        // 2) Atualiza em background (com animação no botão Atualizar)
+        // 2) Atualiza em background (sem travar a UI)
         carregarClientes({
             mostrarPlaceholderSeVazio: !tinhaCache,
-            animarBotao: true,
+            animarBotao: false,
             silent: true,
-            toastErroSeSemCache: true
+            toastErroSeSemCache: true,
+            broadcastOnNetwork: true
         });
     });
 
@@ -91,7 +92,8 @@
                     animarBotao: true,
                     silent: true,
                     toastOk: true,
-                    toastErroSeSemCache: true
+                    toastErroSeSemCache: true,
+                    broadcastOnNetwork: true
                 });
             });
         }
@@ -133,7 +135,7 @@
                 e.preventDefault();
 
                 const btnSubmit = form.querySelector('button[type="submit"]');
-                setButtonLoading(btnSubmit, true, "Cadastrando...");
+                setBtnLoading(btnSubmit, true, "Cadastrando...");
 
                 try {
                     const nome = (document.getElementById("cliente-nome").value || "").trim();
@@ -152,34 +154,37 @@
                         nome_completo: nome,
                         cpf: cpfLimpo, // envia limpo (11 dígitos) para evitar problemas com zero à esquerda
                         email: email,
-                        telefone: normalizarTelefoneFrontend(telefoneFormatado)
+                        telefone: normalizarTelefoneFrontend(telefoneFormatado),
+                        status: "ATIVO"
                     };
 
-                    // Cadastro (rede)
-                    const criado = await API.clientes.cadastrar(payload);
+                    // Cadastro (silencioso no overlay, usando só o loading do botão)
+                    // OBS: action existe no seu Code.gs: cadastrarCliente
+                    const criado = await API.call("cadastrarCliente", payload, "POST", true);
 
                     Utils.showToast("Cliente cadastrado com sucesso!", "success");
                     form.reset();
 
-                    // Atualiza lista local + cache IMEDIATAMENTE (para refletir em “Novo Processo” também)
+                    // Atualiza lista local + cache IMEDIATAMENTE (para refletir no Novo Processo também)
                     aplicarClienteCriadoNoCache(criado, payload);
 
                     // Re-render com termo atual
                     const termo = (document.getElementById("busca-clientes").value || "");
                     renderClientes(termo);
 
-                    // Força um refresh em background para garantir que a lista está 100% sincronizada
+                    // Refresh em background para garantir 100% sincronizado (SEM broadcast para não gerar ping-pong)
                     carregarClientes({
                         mostrarPlaceholderSeVazio: false,
                         animarBotao: false,
                         silent: true,
-                        toastErroSeSemCache: false
+                        toastErroSeSemCache: false,
+                        broadcastOnNetwork: false
                     });
 
                 } catch (err) {
-                    Utils.showToast(err.message || "Erro ao cadastrar cliente.", "error");
+                    Utils.showToast((err && err.message) ? err.message : "Erro ao cadastrar cliente.", "error");
                 } finally {
-                    setButtonLoading(btnSubmit, false);
+                    setBtnLoading(btnSubmit, false);
                 }
             });
         }
@@ -195,7 +200,8 @@
 
             if (Array.isArray(cached) && cached.length) {
                 clientes = cached;
-                renderClientes(document.getElementById("busca-clientes")?.value || "");
+                const termo = (document.getElementById("busca-clientes") && document.getElementById("busca-clientes").value) ? document.getElementById("busca-clientes").value : "";
+                renderClientes(termo);
                 return true;
             }
         } catch (e) {
@@ -210,7 +216,8 @@
             animarBotao: true,
             silent: true,
             toastOk: false,
-            toastErroSeSemCache: true
+            toastErroSeSemCache: true,
+            broadcastOnNetwork: true
         }, options || {});
 
         if (isFetching) return;
@@ -225,27 +232,29 @@
         }
 
         if (opts.animarBotao) {
-            setButtonLoading(btnAtualizar, true, "Atualizando...");
+            setBtnLoading(btnAtualizar, true, "Atualizando...");
         }
 
         try {
             await API.clientes.listar(function (resultado, source) {
-                // O API retorna (data, source) e pode chamar 2 vezes (cache e network)
                 const data = Array.isArray(resultado) ? resultado : [];
 
                 // Atualiza memória
                 clientes = data;
 
                 // Re-render local (rápido)
-                renderClientes(document.getElementById("busca-clientes")?.value || "");
+                const termo = (document.getElementById("busca-clientes") && document.getElementById("busca-clientes").value) ? document.getElementById("busca-clientes").value : "";
+                renderClientes(termo);
 
-                // Se veio da rede, reforça TTL e dispara sync
+                // Se veio da rede, reforça TTL e dispara sync (se permitido)
                 if (source === "network") {
                     try {
                         Utils.Cache.set(getClientesCacheKey(), data, TTL_CLIENTES_MIN);
-                    } catch (e) { /* ignore */ }
+                    } catch (e) {}
 
-                    broadcastClientesAtualizados();
+                    if (opts.broadcastOnNetwork) {
+                        broadcastClientesAtualizados();
+                    }
                 }
             }, opts.silent);
 
@@ -255,14 +264,13 @@
         } catch (e) {
             // Se não tem cache e falhou, mostra erro na tabela
             if ((!clientes || clientes.length === 0) && tbody) {
-                tbody.innerHTML = `
-                    <tr>
-                        <td colspan="5" class="py-6 text-center text-red-500">
-                            Falha ao carregar clientes.
-                            <button id="btn-tentar-novamente-clientes" class="ml-2 text-sm text-blue-600 hover:underline">Tentar novamente</button>
-                        </td>
-                    </tr>
-                `;
+                tbody.innerHTML =
+                    '<tr>' +
+                    '  <td colspan="5" class="py-6 text-center text-red-500">' +
+                    '    Falha ao carregar clientes. ' +
+                    '    <button id="btn-tentar-novamente-clientes" class="ml-2 text-sm text-blue-600 hover:underline">Tentar novamente</button>' +
+                    '  </td>' +
+                    '</tr>';
 
                 const retry = document.getElementById("btn-tentar-novamente-clientes");
                 if (retry) {
@@ -271,7 +279,8 @@
                             mostrarPlaceholderSeVazio: true,
                             animarBotao: true,
                             silent: true,
-                            toastErroSeSemCache: true
+                            toastErroSeSemCache: true,
+                            broadcastOnNetwork: true
                         });
                     });
                 }
@@ -287,7 +296,7 @@
             }
         } finally {
             if (opts.animarBotao) {
-                setButtonLoading(btnAtualizar, false);
+                setBtnLoading(btnAtualizar, false);
             }
             isFetching = false;
         }
@@ -308,7 +317,7 @@
         const novoId = String(novo.id || "");
         const novoCpf = String(novo.cpf || "");
 
-        const jaExiste = clientes.some(function (c) {
+        const jaExiste = (clientes || []).some(function (c) {
             const cid = String(c.id || "");
             const ccpf = normalizarCPFFrontend(c.cpf);
             return (novoId && cid && cid === novoId) || (novoCpf && ccpf && ccpf === novoCpf);
@@ -328,13 +337,14 @@
         // Atualiza cache com TTL maior (isso acelera “Novo Processo”)
         try {
             Utils.Cache.set(getClientesCacheKey(), clientes, TTL_CLIENTES_MIN);
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
 
+        // Broadcast (para outras abas/páginas)
         broadcastClientesAtualizados();
     }
 
     function iniciarListenersSync() {
-        // BroadcastChannel (mesma aba e outras abas)
+        // BroadcastChannel (outras abas)
         try {
             if ("BroadcastChannel" in window) {
                 bc = new BroadcastChannel(SYNC_CHANNEL);
@@ -342,13 +352,14 @@
                     const msg = ev && ev.data ? ev.data : null;
                     if (!msg || msg.type !== "clientes_updated") return;
 
-                    // Recarrega do cache (instantâneo) e atualiza em background
+                    // Apenas hidrata do cache (instantâneo) + refresh silencioso SEM rebroadcast (evita ping-pong)
                     hidratarDoCache();
                     carregarClientes({
                         mostrarPlaceholderSeVazio: false,
                         animarBotao: false,
                         silent: true,
-                        toastErroSeSemCache: false
+                        toastErroSeSemCache: false,
+                        broadcastOnNetwork: false
                     });
                 };
             }
@@ -365,7 +376,8 @@
                 mostrarPlaceholderSeVazio: false,
                 animarBotao: false,
                 silent: true,
-                toastErroSeSemCache: false
+                toastErroSeSemCache: false,
+                broadcastOnNetwork: false
             });
         });
     }
@@ -373,13 +385,13 @@
     function broadcastClientesAtualizados() {
         try {
             localStorage.setItem(STORAGE_SYNC_KEY, String(Date.now()));
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
 
         try {
             if (bc) {
                 bc.postMessage({ type: "clientes_updated", ts: Date.now() });
             }
-        } catch (e) { /* ignore */ }
+        } catch (e) {}
     }
 
     // ========================================================================
@@ -389,7 +401,7 @@
         const tbody = document.getElementById("lista-clientes");
         if (!tbody) return;
 
-        const t = (termo || "").toLowerCase().trim();
+        const t = String(termo || "").toLowerCase().trim();
         let filtrados = clientes || [];
 
         if (t) {
@@ -400,10 +412,10 @@
                 const email = String(c.email || "").toLowerCase();
                 const cpfDigits = cpf.replace(/\D/g, "");
                 return (
-                    nome.includes(t) ||
-                    cpf.includes(t) ||
-                    email.includes(t) ||
-                    (digits && cpfDigits.includes(digits))
+                    nome.indexOf(t) !== -1 ||
+                    cpf.indexOf(t) !== -1 ||
+                    email.indexOf(t) !== -1 ||
+                    (digits && cpfDigits.indexOf(digits) !== -1)
                 );
             });
         }
@@ -457,36 +469,27 @@
     }
 
     // ========================================================================
-    // UI HELPERS
+    // UI HELPERS (usa CSS .btn-loading)
     // ========================================================================
-    function setButtonLoading(btn, loading, loadingText) {
+    function setBtnLoading(btn, loading, loadingText) {
         if (!btn) return;
 
         if (loading) {
             if (btn.dataset.loading === "1") return;
 
             btn.dataset.loading = "1";
-            btn.dataset.originalHtml = btn.innerHTML;
+            btn.dataset.originalText = btn.textContent;
             btn.disabled = true;
-            btn.classList.add("opacity-80", "cursor-wait");
 
-            const text = loadingText || "Carregando...";
-            btn.innerHTML =
-                '<span class="inline-flex items-center gap-2">' +
-                '<svg class="w-4 h-4 animate-spin" fill="none" viewBox="0 0 24 24">' +
-                '<circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>' +
-                '<path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z"></path>' +
-                "</svg>" +
-                "<span>" + escapeHtml(text) + "</span>" +
-                "</span>";
+            btn.classList.add("btn-loading");
+            if (loadingText) btn.textContent = loadingText;
+
         } else {
             btn.dataset.loading = "0";
             btn.disabled = false;
-            btn.classList.remove("opacity-80", "cursor-wait");
 
-            if (btn.dataset.originalHtml) {
-                btn.innerHTML = btn.dataset.originalHtml;
-            }
+            btn.classList.remove("btn-loading");
+            if (btn.dataset.originalText != null) btn.textContent = btn.dataset.originalText;
         }
     }
 
@@ -508,7 +511,7 @@
 
     function formatarCPFParaExibicao(cpf) {
         const digits = String(cpf || "").replace(/\D/g, "");
-        if (digits.length !== 11) return cpf || "";
+        if (digits.length !== 11) return String(cpf || "");
         return digits.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
     }
 
