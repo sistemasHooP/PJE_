@@ -1,314 +1,357 @@
-<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Novo Processo - Sistema Jurídico RPPS</title>
+/**
+ * ============================================================================
+ * ARQUIVO: js/novo-processo.js
+ * DESCRIÇÃO: Lógica da tela de Cadastro de Processos (novo-processo.html).
+ * ATUALIZAÇÃO: Busca Inteligente (Local), Pre-fetching e Validação de Duplicidade.
+ * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
+ * AUTOR: Sistema RPPS Jurídico
+ * ============================================================================
+ */
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
+// Armazena a lista de clientes localmente para busca instantânea (sem delay)
+let baseClientes = [];
+let clienteSelecionado = null;
 
-    <!-- Fonte -->
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+document.addEventListener('DOMContentLoaded', async function() {
 
-    <!-- Flatpickr para DatePicker -->
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/pt.js"></script>
+    // 1. Proteção de Rota
+    if (!Auth.protectRoute()) return;
 
-    <!-- CSS Personalizado -->
-    <link rel="stylesheet" href="css/style.css">
-
-    <style>
-        body { font-family: 'Inter', sans-serif; }
-
-        /* Animações */
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes slideDown {
-            from { opacity: 0; max-height: 0; }
-            to { opacity: 1; max-height: 200px; }
-        }
-
-        .animate-fade-in { animation: fadeIn 0.4s ease-out; }
-        
-        /* Dropdown de resultados */
-        .search-results {
-            max-height: 250px;
-            overflow-y: auto;
-            scrollbar-width: thin;
-        }
-    </style>
-</head>
-<body class="bg-slate-50 min-h-screen pb-20 md:pb-0">
-
-    <!-- Navbar Mobile (Topo) -->
-    <nav class="bg-slate-800 text-white p-4 shadow-lg sticky top-0 z-40 md:hidden flex justify-between items-center">
-        <div class="flex items-center space-x-2">
-            <div class="w-8 h-8 bg-white/10 rounded-lg flex items-center justify-center">
-                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path></svg>
-            </div>
-            <span class="font-bold text-lg tracking-wide">Novo Processo</span>
-        </div>
-        <div class="flex items-center space-x-3">
-            <div class="w-8 h-8 bg-blue-600 rounded-full flex items-center justify-center text-sm font-bold shadow-md" id="user-initials">U</div>
-        </div>
-    </nav>
-
-    <div class="flex min-h-screen">
-        
-        <!-- Sidebar Desktop -->
-        <aside class="hidden md:flex flex-col w-64 bg-slate-800 text-slate-300 fixed h-full shadow-2xl z-50">
-            <div class="p-6 border-b border-slate-700 flex items-center space-x-3">
-                <div class="w-10 h-10 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center text-white shadow-lg">
-                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 6l3 1m0 0l-3 9a5.002 5.002 0 006.001 0M6 7l3 9M6 7l6-2m6 2l3-1m-3 1l-3 9a5.002 5.002 0 006.001 0M18 7l3 9m-3-9l-6-2m0-2v2m0 16V5m0 16H9m3 0h3"></path></svg>
-                </div>
-                <div>
-                    <h1 class="text-white font-bold text-lg leading-tight">Jurídico</h1>
-                    <p class="text-xs text-slate-400">RPPS System</p>
-                </div>
-            </div>
-
-            <nav class="flex-1 px-4 py-6 space-y-2">
-                <a href="dashboard.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-700 hover:text-white transition-all group">
-                    <svg class="w-5 h-5 text-slate-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-                    <span class="font-medium">Dashboard</span>
-                </a>
-                <a href="processos.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-700 hover:text-white transition-all group">
-                    <svg class="w-5 h-5 text-slate-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-                    <span class="font-medium">Processos</span>
-                </a>
-                <a href="novo-processo.html" class="flex items-center space-x-3 px-4 py-3 bg-blue-600 text-white rounded-lg shadow-lg shadow-blue-900/50">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                    <span class="font-medium">Novo Processo</span>
-                </a>
-                <a href="clientes.html" class="flex items-center space-x-3 px-4 py-3 rounded-lg hover:bg-slate-700 hover:text-white transition-all group">
-                    <svg class="w-5 h-5 text-slate-400 group-hover:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
-                    <span class="font-medium">Clientes</span>
-                </a>
-            </nav>
-
-            <div class="p-4 border-t border-slate-700">
-                <button id="desktop-logout-btn" class="flex items-center space-x-3 px-4 py-2 w-full text-slate-400 hover:text-red-400 transition-colors rounded-lg hover:bg-slate-700/50">
-                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path></svg>
-                    <span>Sair</span>
-                </button>
-            </div>
-        </aside>
-
-        <!-- Conteúdo Principal -->
-        <main class="flex-1 md:ml-64 p-4 md:p-8 max-w-5xl mx-auto w-full animate-fade-in">
-            
-            <header class="flex justify-between items-center mb-8 hidden md:flex">
-                <div>
-                    <h2 class="text-2xl font-bold text-slate-800">Cadastro de Processo</h2>
-                    <p class="text-slate-500 text-sm">Preencha os dados para iniciar um novo procedimento.</p>
-                </div>
-            </header>
-
-            <form id="form-novo-processo" class="bg-white rounded-xl shadow-lg border border-slate-200 overflow-hidden">
-                
-                <!-- 1. Identificação do Cliente (Área Inteligente) -->
-                <div class="p-6 md:p-8 border-b border-slate-100 bg-slate-50/50">
-                    <h3 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 text-sm font-bold">1</div>
-                        Identificação do Cliente
-                    </h3>
-                    
-                    <!-- Busca Inteligente -->
-                    <div class="relative mb-6">
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Buscar Cliente Cadastrado</label>
-                        <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                                </svg>
-                            </div>
-                            <input type="text" id="busca_inteligente" 
-                                class="pl-10 block w-full rounded-lg border-slate-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm py-3" 
-                                placeholder="Digite o Nome ou CPF do cliente..." autocomplete="off">
-                            
-                            <!-- Spinner de carregamento -->
-                            <div id="spinner-busca" class="absolute inset-y-0 right-0 pr-3 flex items-center hidden">
-                                <svg class="animate-spin h-5 w-5 text-blue-500" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                </svg>
-                            </div>
-                        </div>
-
-                        <!-- Dropdown de Resultados -->
-                        <div id="lista-resultados" class="hidden absolute z-50 mt-1 w-full bg-white shadow-xl rounded-md border border-slate-200 search-results divide-y divide-slate-100">
-                            <!-- Injetado via JS -->
-                        </div>
-                    </div>
-
-                    <!-- Alerta de Processos Existentes -->
-                    <div id="alert-processos-existentes" class="hidden mb-6 p-4 bg-amber-50 border border-amber-200 rounded-lg">
-                        <div class="flex items-start">
-                            <svg class="w-5 h-5 text-amber-600 mt-0.5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path>
-                            </svg>
-                            <div class="flex-1">
-                                <h4 class="text-sm font-bold text-amber-800">Cliente já possui processos ativos</h4>
-                                <ul id="lista-processos-existentes" class="mt-2 text-sm text-amber-700 space-y-1 list-disc list-inside">
-                                    <!-- Lista injetada via JS -->
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Campos do Cliente (Preenchidos Automaticamente) -->
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <input type="hidden" id="cliente_id" name="cliente_id">
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Nome Completo *</label>
-                            <input type="text" id="parte_nome" name="parte_nome" required 
-                                class="w-full rounded-lg border-slate-300 bg-slate-100 cursor-not-allowed focus:border-blue-500 focus:ring-blue-500" readonly>
-                        </div>
-                        
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">CPF *</label>
-                            <input type="text" id="cpf_cliente" name="cpf_cliente" required 
-                                class="w-full rounded-lg border-slate-300 bg-slate-100 cursor-not-allowed focus:border-blue-500 focus:ring-blue-500" readonly>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Email *</label>
-                            <input type="email" id="email_cliente" name="email_cliente" required 
-                                class="w-full rounded-lg border-slate-300 bg-slate-100 cursor-not-allowed focus:border-blue-500 focus:ring-blue-500" readonly>
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Telefone / Celular</label>
-                            <input type="text" id="telefone_cliente" name="telefone_cliente" 
-                                class="w-full rounded-lg border-slate-300 bg-slate-100 cursor-not-allowed focus:border-blue-500 focus:ring-blue-500" readonly>
-                        </div>
-                    </div>
-                    
-                    <div class="mt-4 flex justify-end">
-                        <button type="button" id="btn-limpar-cliente" class="text-xs text-red-500 hover:text-red-700 font-medium hidden">
-                            Remover seleção / Cadastrar Novo
-                        </button>
-                    </div>
-                </div>
-
-                <!-- 2. Dados do Processo -->
-                <div class="p-6 md:p-8">
-                    <h3 class="text-lg font-semibold text-slate-700 mb-4 flex items-center">
-                        <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mr-3 text-sm font-bold">2</div>
-                        Dados do Processo
-                    </h3>
-
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        
-                        <!-- Coluna Esquerda -->
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Número do Processo *</label>
-                                <input type="text" id="numero_processo" name="numero_processo" required 
-                                    class="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 font-mono"
-                                    placeholder="Ex: 2024.001.123">
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Tipo de Ação *</label>
-                                <div class="relative">
-                                    <select id="tipo" name="tipo" required class="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 appearance-none bg-white">
-                                        <option value="" disabled selected>Selecione...</option>
-                                        <option value="CONCESSÃO DE APOSENTADORIA">Concessão de Aposentadoria</option>
-                                        <option value="PENSÃO POR MORTE">Pensão por Morte</option>
-                                        <option value="REVISÃO DE BENEFÍCIO">Revisão de Benefício</option>
-                                        <option value="AVERBAÇÃO DE TEMPO">Averbação de Tempo</option>
-                                        <option value="PROCESSO ADMINISTRATIVO">Processo Administrativo</option>
-                                        <option value="PROCESSO JUDICIAL">Processo Judicial</option>
-                                        <option value="TOMADA DE CONTAS (TCU/TCE)">Tomada de Contas (TCU/TCE)</option>
-                                    </select>
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-slate-500">
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Coluna Direita -->
-                        <div class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Data de Entrada</label>
-                                <div class="relative">
-                                    <input type="text" id="data_entrada" name="data_entrada" 
-                                        class="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 bg-white"
-                                        placeholder="Hoje">
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-slate-400">
-                                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Descrição / Observações</label>
-                                <textarea id="descricao" name="descricao" rows="3" 
-                                    class="w-full rounded-lg border-slate-300 focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                    placeholder="Breve resumo do caso..."></textarea>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Footer (Ações) -->
-                <div class="px-6 py-4 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
-                    <a href="processos.html" class="text-slate-500 hover:text-slate-700 font-medium text-sm">Cancelar</a>
-                    <button type="submit" id="btn-submit" class="bg-blue-600 hover:bg-blue-700 text-white font-semibold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg transition-all flex items-center">
-                        <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>
-                        Criar Processo
-                    </button>
-                </div>
-
-            </form>
-        </main>
-    </div>
-
-    <!-- Navegação Mobile (Inferior) -->
-    <nav class="fixed bottom-0 w-full bg-white border-t border-slate-200 flex justify-around p-3 md:hidden z-50 pb-safe">
-        <a href="dashboard.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Dash</span>
-        </a>
-        <a href="processos.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Processos</span>
-        </a>
-        <a href="novo-processo.html" class="flex flex-col items-center text-blue-600">
-            <div class="relative">
-                <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v3m0 0v3m0-3h3m-3 0H9m12 0a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-                <span class="absolute top-0 right-0 w-2 h-2 bg-blue-400 rounded-full animate-pulse"></span>
-            </div>
-            <span class="text-[10px] font-medium mt-1">Novo</span>
-        </a>
-        <a href="clientes.html" class="flex flex-col items-center text-slate-400 hover:text-slate-600">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5-2.83M9 20H4v-2a3 3 0 015-2.83M9 20h6M9 20v-2a3 3 0 016 0v2M12 7a3 3 0 110 6 3 3 0 010-6z"></path></svg>
-            <span class="text-[10px] font-medium mt-1">Clientes</span>
-        </a>
-    </nav>
-
-    <!-- Scripts -->
-    <script src="js/config.js"></script>
-    <script src="js/utils.js"></script>
-    <script src="js/api.js"></script>
-    <script src="js/auth.js"></script>
-    <script src="js/novo-processo.js"></script>
-
-    <script>
-        // Init do Flatpickr
+    // 2. Inicialização da Interface
+    Auth.updateUserInfoUI();
+    inicializarLogout();
+    
+    // 3. Inicializa seletores de data (Flatpickr)
+    if (typeof flatpickr !== 'undefined') {
         flatpickr("#data_entrada", {
             dateFormat: "d/m/Y",
             defaultDate: "today",
-            locale: "pt"
+            locale: "pt",
+            allowInput: true
         });
-    </script>
-</body>
-</html>
+    }
+
+    // 4. Carregamento Silencioso de Clientes (Warm-up)
+    // Busca do cache ou da rede sem travar a UI inicial
+    await carregarBaseClientes();
+
+    // 5. Configuração dos Eventos
+    setupBuscaInteligente();
+    setupFormulario();
+});
+
+/**
+ * Busca a lista de clientes (Cache First) para permitir busca instantânea.
+ */
+async function carregarBaseClientes() {
+    const spinner = document.getElementById('spinner-busca');
+    if(spinner) spinner.classList.remove('hidden');
+
+    try {
+        // Usa a API com cache (isSilent=true para não mostrar loading full screen)
+        // Se já foi carregado no Login, será instantâneo.
+        API.clientes.listar((data, source) => {
+            baseClientes = data || [];
+            console.log(`[NovoProcesso] ${baseClientes.length} clientes carregados via ${source}.`);
+            if(spinner) spinner.classList.add('hidden');
+        }, true);
+    } catch (e) {
+        console.error("Erro ao carregar clientes:", e);
+        if(spinner) spinner.classList.add('hidden');
+    }
+}
+
+/**
+ * Configura a lógica de digitação e seleção de cliente.
+ */
+function setupBuscaInteligente() {
+    const inputBusca = document.getElementById('busca_inteligente');
+    const listaResultados = document.getElementById('lista-resultados');
+    const btnLimpar = document.getElementById('btn-limpar-cliente');
+
+    // Evento de Digitação (Input)
+    inputBusca.addEventListener('input', function(e) {
+        const termo = Utils.normalizeText(e.target.value);
+        
+        if (termo.length < 2) {
+            listaResultados.classList.add('hidden');
+            return;
+        }
+
+        // Filtra localmente (Instantâneo)
+        const resultados = baseClientes.filter(c => {
+            const nome = Utils.normalizeText(c.nome_completo || '');
+            const cpf = String(c.cpf || '').replace(/\D/g, '');
+            const termoLimpo = termo.replace(/\D/g, ''); // Para comparar CPF
+
+            // Busca por nome OU CPF
+            return nome.includes(termo) || (termoLimpo.length > 2 && cpf.includes(termoLimpo));
+        });
+
+        renderizarResultados(resultados);
+    });
+
+    // Evento: Clicar fora fecha a lista
+    document.addEventListener('click', function(e) {
+        if (!inputBusca.contains(e.target) && !listaResultados.contains(e.target)) {
+            listaResultados.classList.add('hidden');
+        }
+    });
+
+    // Evento: Botão Limpar / Novo Cadastro
+    btnLimpar.addEventListener('click', function() {
+        resetarCamposCliente(true); // true = desbloquear para edição
+    });
+}
+
+/**
+ * Renderiza o dropdown de resultados da busca.
+ */
+function renderizarResultados(lista) {
+    const container = document.getElementById('lista-resultados');
+    container.innerHTML = '';
+
+    if (lista.length === 0) {
+        container.innerHTML = `
+            <div class="p-4 text-center text-slate-500 text-sm">
+                Nenhum cliente encontrado.
+                <button id="btn-criar-rapido" class="block w-full mt-2 text-blue-600 font-bold hover:underline">
+                    Preencher dados manualmente
+                </button>
+            </div>
+        `;
+        container.classList.remove('hidden');
+        
+        // Atalho para criar novo
+        document.getElementById('btn-criar-rapido').addEventListener('click', () => {
+            container.classList.add('hidden');
+            resetarCamposCliente(true); // Desbloqueia
+            document.getElementById('parte_nome').focus();
+        });
+        return;
+    }
+
+    // Limita a 5 resultados para não poluir
+    const topResults = lista.slice(0, 5);
+
+    topResults.forEach(cliente => {
+        const div = document.createElement('div');
+        div.className = "p-3 hover:bg-blue-50 cursor-pointer transition-colors flex justify-between items-center group";
+        
+        div.innerHTML = `
+            <div>
+                <p class="font-medium text-slate-700 group-hover:text-blue-700">${cliente.nome_completo}</p>
+                <p class="text-xs text-slate-400">CPF: ${cliente.cpf || 'Não inf.'}</p>
+            </div>
+            <svg class="w-5 h-5 text-slate-300 group-hover:text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+        `;
+
+        div.addEventListener('click', () => {
+            selecionarCliente(cliente);
+            container.classList.add('hidden');
+        });
+
+        container.appendChild(div);
+    });
+
+    container.classList.remove('hidden');
+}
+
+/**
+ * Ação ao selecionar um cliente da lista.
+ */
+function selecionarCliente(cliente) {
+    clienteSelecionado = cliente;
+
+    // Preenche campos
+    document.getElementById('cliente_id').value = cliente.id;
+    document.getElementById('parte_nome').value = cliente.nome_completo;
+    document.getElementById('cpf_cliente').value = cliente.cpf;
+    document.getElementById('email_cliente').value = cliente.email;
+    document.getElementById('telefone_cliente').value = cliente.telefone;
+
+    // Bloqueia campos (Visual de "Confirmado")
+    bloquearCampos(true);
+
+    // Limpa busca visualmente
+    document.getElementById('busca_inteligente').value = "";
+    document.getElementById('btn-limpar-cliente').classList.remove('hidden');
+
+    // Verifica se já tem processos (Alerta Inteligente)
+    verificarProcessosExistentes(cliente);
+}
+
+/**
+ * Verifica se o cliente selecionado já possui processos ativos.
+ */
+async function verificarProcessosExistentes(cliente) {
+    const alertBox = document.getElementById('alert-processos-existentes');
+    const listaUl = document.getElementById('lista-processos-existentes');
+    
+    // Esconde inicialmente
+    alertBox.classList.add('hidden');
+    listaUl.innerHTML = '';
+
+    try {
+        // Busca processos (Cache First)
+        // Nota: Idealmente teríamos uma rota API específica, mas filtrar localmente 
+        // é muito rápido se a lista de processos já estiver em cache.
+        API.processos.listar({}, (processos) => {
+            if (!processos) return;
+
+            // Filtra processos deste cliente (por ID ou CPF)
+            const processosDoCliente = processos.filter(p => {
+                const mesmoId = p.cliente_id && String(p.cliente_id) === String(cliente.id);
+                const mesmoEmail = p.email_interessado && cliente.email && 
+                                   p.email_interessado.toLowerCase() === cliente.email.toLowerCase();
+                
+                // Só queremos alertas de processos ATIVOS
+                const ativo = p.status !== 'ARQUIVADO' && p.status !== 'CANCELADO';
+                
+                return (mesmoId || mesmoEmail) && ativo;
+            });
+
+            if (processosDoCliente.length > 0) {
+                // Monta o alerta
+                processosDoCliente.forEach(p => {
+                    const li = document.createElement('li');
+                    li.textContent = `${p.numero_processo} - ${p.tipo} (${p.status})`;
+                    listaUl.appendChild(li);
+                });
+                
+                // Mostra com animação
+                alertBox.classList.remove('hidden');
+                alertBox.classList.add('animate-fade-in');
+            }
+        }, true); // Silent mode
+
+    } catch (e) {
+        console.warn("Não foi possível verificar processos existentes.", e);
+    }
+}
+
+/**
+ * Reseta o formulário de cliente, permitindo cadastro manual ou nova busca.
+ * @param {boolean} permitirEdicao - Se true, remove 'readonly' e estilos cinza.
+ */
+function resetarCamposCliente(permitirEdicao = false) {
+    clienteSelecionado = null;
+    
+    // Limpa valores
+    const campos = ['cliente_id', 'parte_nome', 'cpf_cliente', 'email_cliente', 'telefone_cliente'];
+    campos.forEach(id => document.getElementById(id).value = '');
+
+    // Esconde botão de limpar e alertas
+    document.getElementById('btn-limpar-cliente').classList.add('hidden');
+    document.getElementById('alert-processos-existentes').classList.add('hidden');
+
+    // Controla estado de edição (Readonly vs Editável)
+    bloquearCampos(!permitirEdicao);
+}
+
+/**
+ * Aplica ou remove estilo de "Bloqueado/Readonly" nos inputs.
+ */
+function bloquearCampos(bloquear) {
+    const inputs = document.querySelectorAll('#parte_nome, #cpf_cliente, #email_cliente, #telefone_cliente');
+    
+    inputs.forEach(input => {
+        if (bloquear) {
+            input.setAttribute('readonly', true);
+            input.classList.add('bg-slate-100', 'cursor-not-allowed');
+            input.classList.remove('bg-white');
+        } else {
+            input.removeAttribute('readonly');
+            input.classList.remove('bg-slate-100', 'cursor-not-allowed');
+            input.classList.add('bg-white');
+        }
+    });
+}
+
+/**
+ * Envio do Formulário Principal
+ */
+function setupFormulario() {
+    const form = document.getElementById('form-novo-processo');
+
+    form.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        // Validações básicas
+        const nome = document.getElementById('parte_nome').value.trim();
+        const cpf = document.getElementById('cpf_cliente').value.trim();
+        const numero = document.getElementById('numero_processo').value.trim();
+        
+        if (!nome || !cpf) {
+            Utils.showToast("Por favor, selecione um cliente ou preencha os dados manualmente.", "warning");
+            document.getElementById('busca_inteligente').focus();
+            return;
+        }
+
+        const payload = {
+            // Dados Cliente
+            cliente_id: document.getElementById('cliente_id').value,
+            parte_nome: nome,
+            cpf_cliente: cpf,
+            email_cliente: document.getElementById('email_cliente').value.trim(),
+            telefone_cliente: document.getElementById('telefone_cliente').value.trim(),
+            
+            // Dados Processo
+            numero_processo: numero,
+            tipo: document.getElementById('tipo').value,
+            data_entrada: document.getElementById('data_entrada').value, // Flatpickr já formata
+            descricao: document.getElementById('descricao').value
+        };
+
+        try {
+            // Chama API
+            const resultado = await API.processos.criar(payload);
+
+            // CRÍTICO: Limpa caches para forçar atualização nas outras telas
+            Utils.Cache.clear('listarProcessos');
+            Utils.Cache.clear('getDashboard');
+            // Se cadastrou cliente novo (não tinha ID), limpa cache de clientes também
+            if (!payload.cliente_id) {
+                Utils.Cache.clear('listarClientes');
+            }
+
+            Utils.showToast("Processo criado com sucesso!", "success");
+
+            // Feedback Visual de "Abrindo..."
+            Utils.showLoading("Abrindo processo...");
+
+            setTimeout(() => {
+                if (resultado && resultado.id) {
+                    Utils.navigateTo(`detalhe-processo.html?id=${resultado.id}`);
+                } else {
+                    Utils.navigateTo('processos.html');
+                }
+            }, 1000);
+
+        } catch (error) {
+            console.error("Erro ao criar:", error);
+            Utils.hideLoading();
+
+            if (error.message && error.message.includes("Já existe")) {
+                Utils.showToast(error.message, "error");
+                document.getElementById('numero_processo').classList.add('border-red-500');
+            } else {
+                Utils.showToast(error.message || "Erro ao criar processo.", "error");
+            }
+        }
+    });
+}
+
+/**
+ * Auxiliar para logout
+ */
+function inicializarLogout() {
+    const btn = document.getElementById('desktop-logout-btn');
+    if (btn) {
+        btn.addEventListener('click', () => {
+            if (confirm("Deseja realmente sair?")) Auth.logout();
+        });
+    }
+}
