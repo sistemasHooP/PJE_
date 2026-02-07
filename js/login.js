@@ -2,7 +2,7 @@
  * ============================================================================
  * ARQUIVO: js/login.js
  * DESCRIÇÃO: Lógica da página de Login (index.html).
- * VERSÃO: 2.0 - Com Warm-up, Preload de Dashboard, Processos E Clientes.
+ * ATUALIZAÇÃO: Sistema de "Warm-up" (Acordar servidor ao abrir a tela).
  * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
  * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
  * ============================================================================
@@ -64,25 +64,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Se chegou aqui, login ok
                 Auth.saveSession(response);
 
-                // 3. PRELOAD REAL (Cache Warming) - AGORA INCLUI CLIENTES!
-                // Carrega Dashboard, Processos E Clientes em paralelo
+                // 3. PRELOAD REAL (Cache Warming)
                 await Promise.all([
-                    // Preload Dashboard
                     new Promise(resolve => {
                         API.processos.dashboard((data, source) => {
                             if (source === 'network') resolve();
                         }, true).catch(resolve); 
                     }),
                     
-                    // Preload Lista de Processos
                     new Promise(resolve => {
                         API.processos.listar({}, (data, source) => {
                             if (source === 'network') resolve();
                         }, true).catch(resolve); 
-                    }),
-
-                    // ✅ NOVO: Preload Lista de Clientes
-                    API.clientes.preload().catch(() => {})
+                    })
                 ]);
 
                 // 4. Sucesso
