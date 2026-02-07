@@ -2,7 +2,7 @@
  * ============================================================================
  * ARQUIVO: js/login.js
  * DESCRIÇÃO: Lógica da página de Login (index.html).
- * ATUALIZAÇÃO: Sistema de "Warm-up" + Prefetch de Clientes no Login.
+ * ATUALIZAÇÃO: Sistema de "Warm-up" (Acordar servidor ao abrir a tela).
  * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
  * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
  * ============================================================================
@@ -14,6 +14,8 @@ document.addEventListener('DOMContentLoaded', function() {
     Auth.redirectIfAuthenticated();
 
     // --- WARM-UP (ACORDAR SERVIDOR) ---
+    // Dispara um 'ping' silencioso assim que a tela carrega.
+    // Isso tira o Google Apps Script do modo de suspensão enquanto o usuário digita a senha.
     console.log("Iniciando aquecimento do servidor...");
     API.call('ping', {}, 'POST', true).then(() => {
         console.log("Servidor pronto e aquecido.");
@@ -33,6 +35,7 @@ document.addEventListener('DOMContentLoaded', function() {
             const type = senhaInput.getAttribute('type') === 'password' ? 'text' : 'password';
             senhaInput.setAttribute('type', type);
             
+            // Alterna o estilo do ícone
             this.classList.toggle('text-slate-600');
             this.classList.toggle('text-slate-400');
         });
@@ -61,7 +64,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 // Se chegou aqui, login ok
                 Auth.saveSession(response);
 
-                // 3. PRELOAD REAL (Cache Warming) — Inclui clientes!
+                // 3. PRELOAD REAL (Cache Warming)
                 await Promise.all([
                     new Promise(resolve => {
                         API.processos.dashboard((data, source) => {
@@ -73,32 +76,6 @@ document.addEventListener('DOMContentLoaded', function() {
                         API.processos.listar({}, (data, source) => {
                             if (source === 'network') resolve();
                         }, true).catch(resolve); 
-                    }),
-
-                    // ============================================================
-                    // [FIX BUG 3] PREFETCH DE CLIENTES
-                    // Busca a lista de clientes em paralelo e salva no localStorage.
-                    // Quando o usuário abrir clientes.html ou novo-processo.html,
-                    // os dados já estarão em cache instantaneamente.
-                    // ============================================================
-                    new Promise(resolve => {
-                        API.clientes.listar().then(clientes => {
-                            if (Array.isArray(clientes)) {
-                                try {
-                                    localStorage.setItem('rpps_clientes_cache', JSON.stringify({
-                                        data: clientes,
-                                        timestamp: Date.now()
-                                    }));
-                                    console.log('[Login] Prefetch de clientes: ' + clientes.length + ' clientes em cache.');
-                                } catch (e) {
-                                    console.warn('[Login] Erro ao cachear clientes:', e);
-                                }
-                            }
-                            resolve();
-                        }).catch(err => {
-                            console.warn('[Login] Prefetch de clientes falhou (sem problemas):', err.message);
-                            resolve();
-                        });
                     })
                 ]);
 
