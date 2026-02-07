@@ -1,119 +1,188 @@
 /**
  * ============================================================================
- * ARQUIVO: js/login.js
- * DESCRIÇÃO: Lógica da página de Login (index.html).
- * ATUALIZAÇÃO: Sistema de "Warm-up" (Acordar servidor ao abrir a tela).
- * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
- * AUTOR: Desenvolvedor Sênior (Sistema RPPS)
+ * ARQUIVO: login.js
+ * DESCRIÇÃO: Autenticação do advogado com PRELOAD de clientes
+ * VERSÃO: 2.0 - OTIMIZADO com cache de clientes
+ * FIX: Adiciona preload de clientes durante o login para evitar travamento
  * ============================================================================
  */
 
 document.addEventListener('DOMContentLoaded', function() {
+  const loginForm = document.getElementById('loginForm');
+  const emailInput = document.getElementById('email');
+  const senhaInput = document.getElementById('senha');
+  const loginButton = document.getElementById('loginButton');
+  const loadingDiv = document.getElementById('loading');
+  const loadingText = document.getElementById('loadingText');
 
-    // 1. Verificar se já está logado
-    Auth.redirectIfAuthenticated();
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🔥 WARM-UP IMEDIATO (assim que a página carrega)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  // Warm-up silencioso em background (desperta o Apps Script)
+  API.call('ping').catch(() => {
+    // Ignora erros de warm-up
+  });
 
-    // --- WARM-UP (ACORDAR SERVIDOR) ---
-    // Dispara um 'ping' silencioso assim que a tela carrega.
-    // Isso tira o Google Apps Script do modo de suspensão enquanto o usuário digita a senha.
-    console.log("Iniciando aquecimento do servidor...");
-    API.call('ping', {}, 'POST', true).then(() => {
-        console.log("Servidor pronto e aquecido.");
-    }).catch(e => {
-        console.log("Tentativa de aquecimento falhou (sem problemas, o login tentará novamente).");
-    });
+  console.log('🚀 [Login] Warm-up iniciado em background');
 
-    // Referências aos elementos do DOM
-    const loginForm = document.getElementById('login-form');
-    const emailInput = document.getElementById('email');
-    const senhaInput = document.getElementById('senha');
-    const togglePasswordBtn = document.getElementById('toggle-password');
+  // ═══════════════════════════════════════════════════════════════════════════
+  // LOGIN
+  // ═══════════════════════════════════════════════════════════════════════════
 
-    // 2. Manipulação do Botão "Ver Senha"
-    if (togglePasswordBtn && senhaInput) {
-        togglePasswordBtn.addEventListener('click', function() {
-            const type = senhaInput.getAttribute('type') === 'password' ? 'text' : 'password';
-            senhaInput.setAttribute('type', type);
+  loginForm.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-            // Alterna o estilo do ícone
-            this.classList.toggle('text-slate-600');
-            this.classList.toggle('text-slate-400');
-        });
+    const email = emailInput.value.trim();
+    const senha = senhaInput.value.trim();
+
+    if (!email || !senha) {
+      UI.showToast('Preencha todos os campos', 'error');
+      return;
     }
 
-    // 3. Envio do Formulário de Login
-    if (loginForm) {
-        loginForm.addEventListener('submit', async function(e) {
-            e.preventDefault();
+    loginButton.disabled = true;
+    loadingDiv.classList.remove('hidden');
+    loadingText.textContent = 'Autenticando...';
 
-            const email = emailInput.value.trim();
-            const senha = senhaInput.value;
+    try {
+      // 1️⃣ PASSO 1: LOGIN
+      console.log('🔐 [Login] Iniciando autenticação...');
+      
+      const response = await API.call('login', { 
+        email, 
+        senha: CryptoJS.SHA256(senha).toString() 
+      });
 
-            if (!email || !senha) {
-                Utils.showToast("Por favor, preencha todos os campos.", "warning");
-                return;
-            }
+      if (!response || !response.token) {
+        throw new Error('Resposta inválida do servidor');
+      }
 
-            try {
-                // 1. TELA DE SINCRONIZAÇÃO (Loader Principal Personalizado)
-                Utils.showLoading("Sincronizando banco de dados...", "database");
+      // Salva token e dados do usuário
+      Auth.setToken(response.token);
+      Auth.setUser(response.usuario);
 
-                // 2. Autenticação (Modo Silencioso)
-                const response = await API.call('login', { email, senha }, 'POST', true);
+      console.log('✅ [Login] Autenticação bem-sucedida');
+      loadingText.textContent = 'Carregando dados...';
 
-                // Se chegou aqui, login ok
-                Auth.saveSession(response);
+      // 2️⃣ PASSO 2: PRELOAD DE CLIENTES EM BACKGROUND
+      // Isso evita travamento na aba "Novo Processo"
+      console.log('📥 [Login] Iniciando preload de clientes...');
+      
+      await preloadClientes();
 
-                // 3. PRELOAD REAL (Cache Warming)
-                await Promise.all([
-                    new Promise(resolve => {
-                        API.processos.dashboard((data, source) => {
-                            if (source === 'network') resolve();
-                        }, true).catch(resolve);
-                    }),
+      // 3️⃣ PASSO 3: PRELOAD DE DASHBOARD (opcional, mas melhora UX)
+      console.log('📊 [Login] Preload de dashboard...');
+      
+      API.call('getDashboard').catch(() => {
+        // Ignora erros de preload (dashboard carrega depois)
+      });
 
-                    new Promise(resolve => {
-                        API.processos.listar({}, (data, source) => {
-                            if (source === 'network') resolve();
-                        }, true).catch(resolve);
-                    }),
+      // 4️⃣ SUCESSO: Redireciona para o dashboard
+      console.log('✅ [Login] Preload concluído. Redirecionando...');
+      
+      UI.showToast('Login realizado com sucesso!', 'success');
+      
+      setTimeout(() => {
+        window.location.href = './dashboard.html';
+      }, 500);
 
-                    // Pré-carrega clientes para acelerar Novo Processo e aba Clientes
-                    new Promise(resolve => {
-                        API.clientes.listar((data, source) => {
-                            if (source === 'network') resolve();
-                        }, true).catch(resolve);
-                    })
-                ]);
-
-                // 4. Sucesso
-                Utils.hideLoading();
-
-                setTimeout(() => {
-                    Utils.showToast(`Login realizado com sucesso!`, "success");
-
-                    // Redireciona
-                    setTimeout(() => {
-                        Utils.navigateTo(CONFIG.PAGES.DASHBOARD);
-                    }, 1000);
-                }, 100);
-
-            } catch (error) {
-                console.error("Falha no login:", error);
-                Utils.hideLoading();
-
-                emailInput.classList.add('border-red-500');
-                senhaInput.classList.add('border-red-500');
-
-                setTimeout(() => {
-                    emailInput.classList.remove('border-red-500');
-                    senhaInput.classList.remove('border-red-500');
-                }, 2000);
-
-                Utils.showToast(error.message || "Email ou senha incorretos.", "error");
-                senhaInput.value = "";
-                senhaInput.focus();
-            }
-        });
+    } catch (error) {
+      console.error('❌ [Login] Erro:', error);
+      
+      loginButton.disabled = false;
+      loadingDiv.classList.add('hidden');
+      
+      const mensagem = error.message || 'Erro ao fazer login';
+      UI.showToast(mensagem, 'error');
     }
+  });
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🚀 FUNÇÃO DE PRELOAD DE CLIENTES (CRÍTICA PARA PERFORMANCE)
+  // ═══════════════════════════════════════════════════════════════════════════
+  
+  /**
+   * Preload de clientes durante o login
+   * Armazena no cache para uso rápido na aba "Novo Processo"
+   */
+  async function preloadClientes() {
+    try {
+      console.log('📦 [Preload] Buscando lista de clientes...');
+      
+      const startTime = performance.now();
+      
+      // Chama endpoint otimizado de listagem
+      const clientes = await API.call('listarClientes');
+      
+      const endTime = performance.now();
+      const duration = Math.round(endTime - startTime);
+      
+      if (!clientes || !Array.isArray(clientes)) {
+        console.warn('⚠️ [Preload] Resposta inválida de clientes');
+        return;
+      }
+
+      console.log(`✅ [Preload] ${clientes.length} clientes carregados em ${duration}ms`);
+
+      // Salva no cache do utils.js (Cache.set)
+      // TTL de 30 minutos (suficiente para sessão de trabalho)
+      Cache.set('lista_clientes', clientes, 30 * 60 * 1000);
+
+      // Cria índices para busca rápida
+      const indicesPorCPF = {};
+      const indicesPorNome = {};
+
+      clientes.forEach((cliente, index) => {
+        // Índice por CPF (limpo)
+        if (cliente.cpf) {
+          indicesPorCPF[cliente.cpf] = index;
+        }
+
+        // Índice por nome (normalizado para busca)
+        if (cliente.nome_completo) {
+          const nomeNormalizado = cliente.nome_completo
+            .toLowerCase()
+            .normalize('NFD')
+            .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+          
+          indicesPorNome[nomeNormalizado] = index;
+        }
+      });
+
+      // Salva índices
+      Cache.set('clientes_indice_cpf', indicesPorCPF, 30 * 60 * 1000);
+      Cache.set('clientes_indice_nome', indicesPorNome, 30 * 60 * 1000);
+
+      console.log('🔍 [Preload] Índices de busca criados');
+
+    } catch (error) {
+      // Não bloqueia o login se o preload falhar
+      // O usuário terá uma primeira busca mais lenta, mas não trava
+      console.warn('⚠️ [Preload] Falha ao carregar clientes (não crítico):', error.message);
+    }
+  }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // UTILITÁRIOS
+  // ═══════════════════════════════════════════════════════════════════════════
+
+  // Auto-focus no email
+  emailInput.focus();
+
+  // Enter no email vai para senha
+  emailInput.addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      senhaInput.focus();
+    }
+  });
+
+  // Atalho: Ctrl+Enter para submit rápido
+  senhaInput.addEventListener('keydown', function(e) {
+    if (e.ctrlKey && e.key === 'Enter') {
+      e.preventDefault();
+      loginForm.dispatchEvent(new Event('submit'));
+    }
+  });
 });
