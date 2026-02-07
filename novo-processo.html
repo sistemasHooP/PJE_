@@ -633,26 +633,70 @@
         // SELEÇÃO RÁPIDA DE CLIENTES CADASTRADOS
         // =====================================================================
 
-        async function carregarClientesRapido() {
-            try {
-                const clientes = await API.clientes.listar();
-                listaClientesCache = Array.isArray(clientes) ? clientes : [];
+        /**
+         * Carrega clientes para seleção rápida usando Cache SWR.
+         * MELHORADO: 
+         * - Usa cache para carregamento instantâneo
+         * - Atualiza em background sem bloquear UI
+         * - Popula datalist imediatamente se houver cache
+         */
+        function carregarClientesRapido() {
+            console.log('[NovoProcesso] Iniciando carregamento de clientes para seleção rápida...');
+            
+            // Usa o novo método SWR com callback
+            API.clientes.listar(
+                // Callback chamado para cache E para rede
+                function(clientes, source) {
+                    console.log(`[NovoProcesso] Clientes recebidos (${source}): ${Array.isArray(clientes) ? clientes.length : 0}`);
+                    
+                    // Atualiza cache local
+                    listaClientesCache = Array.isArray(clientes) ? clientes : [];
+                    
+                    // Popula o datalist
+                    popularDatalistClientes(listaClientesCache);
+                },
+                // forceSilent: true para não mostrar loading global
+                true
+            ).catch(function(e) {
+                console.warn('[NovoProcesso] Falha ao carregar clientes (não crítico):', e.message || e);
+                // Se falhou mas já tem cache local, mantém
+                if (listaClientesCache.length > 0) {
+                    popularDatalistClientes(listaClientesCache);
+                }
+            });
+        }
 
-                const datalist = document.getElementById('clientes-lista');
-                if (!datalist) return;
+        /**
+         * Popula o datalist com os clientes carregados.
+         * @param {Array} clientes - Lista de clientes
+         */
+        function popularDatalistClientes(clientes) {
+            const datalist = document.getElementById('clientes-lista');
+            if (!datalist) return;
 
-                datalist.innerHTML = '';
-                listaClientesCache.forEach(function(c) {
-                    const opt = document.createElement('option');
-                    const nome = c.nome_completo || '';
-                    const cpf = c.cpf || '';
-                    const email = c.email || '';
-                    opt.value = nome + ' | ' + cpf + ' | ' + email;
-                    datalist.appendChild(opt);
-                });
-            } catch (e) {
-                console.warn('Não foi possível carregar clientes para seleção rápida:', e.message || e);
+            datalist.innerHTML = '';
+            
+            if (!clientes || clientes.length === 0) {
+                console.log('[NovoProcesso] Nenhum cliente para popular datalist');
+                return;
             }
+
+            clientes.forEach(function(c) {
+                const opt = document.createElement('option');
+                const nome = c.nome_completo || '';
+                
+                // Formata CPF para exibição
+                let cpfDisplay = String(c.cpf || '').replace(/\D/g, '').padStart(11, '0');
+                cpfDisplay = cpfDisplay.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, '$1.$2.$3-$4');
+                
+                const email = c.email || '';
+                
+                // Formato: "Nome Completo | 000.000.000-00 | email@exemplo.com"
+                opt.value = nome + ' | ' + cpfDisplay + ' | ' + email;
+                datalist.appendChild(opt);
+            });
+
+            console.log(`[NovoProcesso] Datalist populado com ${clientes.length} clientes`);
         }
 
         function selecionarClienteRapido() {
