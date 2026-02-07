@@ -15,12 +15,6 @@
     <!-- Tailwind CSS (Versão 3.4.16 via CDN) -->
     <script src="https://cdn.tailwindcss.com"></script>
     
-    <!-- ✅ ADICIONADO: CryptoJS (OBRIGATÓRIO para hash de senha) -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/crypto-js/4.1.1/crypto-js.min.js" 
-            integrity="sha512-E8QSvWZ0eCLGk4km3hxSsNs8n9SBXqwHe8VRJ9NEw3k2BRx2rr7VH8c0VbM1n5yPMYdoGqRbV8I4kE3MiCnBpg==" 
-            crossorigin="anonymous" 
-            referrerpolicy="no-referrer"></script>
-    
     <!-- Fontes -->
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
@@ -138,20 +132,29 @@
         </div>
     </div>
 
-    <!-- Scripts de Infraestrutura -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    <!-- SCRIPTS - ORDEM CRÍTICA (NÃO MUDAR!)                                     -->
+    <!-- ═══════════════════════════════════════════════════════════════════════ -->
+    
+    <!-- 1. Biblioteca de Criptografia (PRIMEIRO DE TUDO) -->
+    <script src="js/crypto.js"></script>
+    
+    <!-- 2. Scripts de Infraestrutura -->
     <script src="js/config.js"></script>
     <script src="js/utils.js"></script>
     <script src="js/api.js"></script>
     <script src="js/auth.js"></script>
 
-    <!-- Script PWA (Controle de Instalação) -->
+    <!-- 3. Script PWA (Controle de Instalação) -->
     <script src="js/pwa.js"></script>
 
-    <!-- Script da Página (Lógica Específica) -->
+    <!-- 4. Script da Página (POR ÚLTIMO) -->
     <script src="js/login.js"></script>
     
     <script>
-        document.getElementById('version-display').textContent = 'v' + CONFIG.VERSION;
+        if (typeof CONFIG !== 'undefined' && CONFIG.VERSION) {
+            document.getElementById('version-display').textContent = 'v' + CONFIG.VERSION;
+        }
     </script>
 
 </body>
