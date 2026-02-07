@@ -82,7 +82,7 @@ const ClienteAPI = {
 
     // ══════════════════════════════════════════════════════════════════════
     // PROCESSOS
-    // ═════════════════════════════════════════════════════════════════════
+    // ══════════════════════════════════════════════════════════════════════
 
     /**
      * Lista os processos do cliente logado.
@@ -111,13 +111,6 @@ const ClienteAPI = {
      */
     downloadArquivo: function(fileUrl) {
         return this.call('downloadArquivoCliente', { fileUrl: fileUrl }, true);
-    },
-
-    /**
-     * Lista arquivos da pasta do processo (proxy sem login Google).
-     */
-    listarArquivosProcesso: function(idProcesso) {
-        return this.call('listarArquivosProcessoCliente', { id_processo: idProcesso }, true);
     }
 };
 
@@ -136,7 +129,7 @@ const ClienteUI = {
         if (!loader) {
             loader = document.createElement('div');
             loader.id = 'cliente-loader';
-            loader.className = 'fixed inset-0 z-[80] flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm';
+            loader.className = 'fixed inset-0 z-50 flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm';
             
             loader.innerHTML = `
                 <div class="flex flex-col items-center p-8">
@@ -171,7 +164,7 @@ const ClienteUI = {
         if (!container) {
             container = document.createElement('div');
             container.id = 'toast-container';
-            container.className = 'fixed top-4 right-4 z-[85] flex flex-col gap-2 max-w-sm w-full px-4';
+            container.className = 'fixed top-4 right-4 z-50 flex flex-col gap-2 max-w-sm w-full px-4';
             document.body.appendChild(container);
         }
 
@@ -282,10 +275,6 @@ const ClienteUI = {
             return;
         }
 
-        // Fecha o modal da pasta antes da visualização para evitar sobreposição
-        const folderModal = document.getElementById('pasta-arquivos-modal');
-        if (folderModal) folderModal.remove();
-
         // Mostra loading
         this.showLoading('Carregando arquivo...');
 
@@ -311,8 +300,8 @@ const ClienteUI = {
 
             // Decide como exibir baseado no tipo
             if (data.mimeType.includes('pdf')) {
-                // PDF: abre em modal interno (evita bloqueio de popup em mobile/navegadores restritos)
-                this._showPdfModal(blobUrl, fileName || data.nome || 'Documento.pdf');
+                // PDF: Abre em nova aba
+                window.open(blobUrl, '_blank');
             } else if (data.mimeType.includes('image')) {
                 // Imagem: Mostra em modal
                 this._showImageModal(blobUrl, fileName || data.nome);
@@ -347,7 +336,7 @@ const ClienteUI = {
         // Cria o modal
         const modal = document.createElement('div');
         modal.id = 'image-modal';
-        modal.className = 'fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-90 p-4';
+        modal.className = 'fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-90 p-4';
         modal.innerHTML = `
             <div class="relative max-w-4xl w-full">
                 <!-- Botão Fechar -->
@@ -388,48 +377,6 @@ const ClienteUI = {
         const handleEsc = (e) => {
             if (e.key === 'Escape') {
                 modal.remove();
-                document.removeEventListener('keydown', handleEsc);
-            }
-        };
-        document.addEventListener('keydown', handleEsc);
-    },
-
-    /**
-     * Mostra modal com PDF (fallback para evitar bloqueio de popups).
-     * @private
-     */
-    _showPdfModal: function(pdfUrl, title) {
-        const existingModal = document.getElementById('pdf-modal');
-        if (existingModal) existingModal.remove();
-
-        const modal = document.createElement('div');
-        modal.id = 'pdf-modal';
-        modal.className = 'fixed inset-0 z-[70] flex items-center justify-center bg-black bg-opacity-90 p-3 sm:p-4';
-
-        modal.innerHTML = `
-            <div class="relative w-full max-w-5xl h-[90vh] bg-white rounded-xl overflow-hidden shadow-2xl">
-                <div class="h-14 px-4 flex items-center justify-between border-b border-slate-200 bg-slate-50">
-                    <p class="font-medium text-slate-700 truncate pr-3">${this.escapeHtml(title || 'Documento PDF')}</p>
-                    <div class="flex items-center gap-2">
-                        <a href="${pdfUrl}" download="${this.escapeHtml(title || 'documento.pdf')}" class="px-3 py-1.5 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded-lg">Baixar</a>
-                        <button id="close-pdf-modal" class="px-3 py-1.5 text-sm bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-lg">Fechar</button>
-                    </div>
-                </div>
-                <iframe src="${pdfUrl}" class="w-full h-[calc(90vh-56px)]" title="PDF"></iframe>
-            </div>
-        `;
-
-        document.body.appendChild(modal);
-
-        const close = () => modal.remove();
-        document.getElementById('close-pdf-modal').addEventListener('click', close);
-        modal.addEventListener('click', (e) => {
-            if (e.target === modal) close();
-        });
-
-        const handleEsc = (e) => {
-            if (e.key === 'Escape') {
-                close();
                 document.removeEventListener('keydown', handleEsc);
             }
         };
