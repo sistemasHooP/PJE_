@@ -552,6 +552,110 @@
         let listaClientesCache = [];
         let clientesById = {};
 
+        // =====================================================================
+        // CACHE + SINCRONIZAÇÃO (Clientes <-> Novo Processo)
+        // =====================================================================
+
+        // Mesma chave que o API usa: action + '_' + JSON.stringify(params)
+        // Para listarClientes com params {}, fica exatamente "listarClientes_{}".
+        const CLIENTES_CACHE_KEY = `listarClientes_${JSON.stringify({})}`;
+        const CLIENTES_CACHE_TTL_MINUTES = 60;
+
+        // Sync entre abas (Clientes <-> Novo Processo)
+        const CLIENTES_SYNC_CHANNEL = 'rpps_juridico_sync';
+        const CLIENTES_SYNC_KEY = 'rpps_clientes_last_update';
+        let bcClientes = null;
+
+        function sanitizarClienteParaLista(c) {
+            if (!c) return null;
+            return {
+                id: c.id,
+                nome_completo: c.nome_completo || '',
+                cpf: c.cpf || '',
+                email: c.email || '',
+                telefone: c.telefone || '',
+                status: c.status || ''
+            };
+        }
+
+        function rebuildClientesIndex() {
+            clientesById = {};
+            (listaClientesCache || []).forEach(function(c) {
+                if (c && c.id) clientesById[String(c.id)] = c;
+            });
+        }
+
+        function salvarClientesNoCache() {
+            if (!Array.isArray(listaClientesCache)) return;
+            Utils.Cache.set(CLIENTES_CACHE_KEY, listaClientesCache, CLIENTES_CACHE_TTL_MINUTES);
+        }
+
+        function sincronizarClientesDoCache() {
+            const cached = Utils.Cache.get(CLIENTES_CACHE_KEY);
+            if (Array.isArray(cached) && cached.length) {
+                listaClientesCache = cached;
+                rebuildClientesIndex();
+                popularDatalistClientes();
+                renderSugestoesClientes();
+            }
+        }
+
+        function broadcastClientesUpdated() {
+            try { localStorage.setItem(CLIENTES_SYNC_KEY, String(Date.now())); } catch (e) {}
+            try {
+                if (bcClientes) bcClientes.postMessage({ type: 'clientes_updated', ts: Date.now() });
+            } catch (e) {}
+        }
+
+        function initClientesSync() {
+            // BroadcastChannel (se disponível)
+            try {
+                if ('BroadcastChannel' in window) {
+                    bcClientes = new BroadcastChannel(CLIENTES_SYNC_CHANNEL);
+                    bcClientes.onmessage = function(ev) {
+                        const msg = ev && ev.data ? ev.data : null;
+                        if (!msg || msg.type !== 'clientes_updated') return;
+                        sincronizarClientesDoCache();
+                    };
+                }
+            } catch (e) {
+                bcClientes = null;
+            }
+
+            // Storage (sempre)
+            window.addEventListener('storage', function(e) {
+                if (!e) return;
+                if (e.key === CLIENTES_CACHE_KEY || e.key === CLIENTES_SYNC_KEY) {
+                    sincronizarClientesDoCache();
+                }
+            });
+        }
+
+        function upsertClienteNaSelecaoRapida(cliente) {
+            const c = sanitizarClienteParaLista(cliente);
+            if (!c || !c.id) return;
+
+            const idStr = String(c.id);
+
+            // Atualiza/inclui
+            const idx = (listaClientesCache || []).findIndex(function(x) {
+                return String((x && x.id) || '') === idStr;
+            });
+
+            if (idx >= 0) listaClientesCache[idx] = c;
+            else listaClientesCache.unshift(c);
+
+            // Recria índice e atualiza UI
+            rebuildClientesIndex();
+            popularDatalistClientes();
+            renderSugestoesClientes();
+
+            // Salva cache e avisa outras abas
+            salvarClientesNoCache();
+            broadcastClientesUpdated();
+        }
+
+
         function normalizarCPFFrontend(valor) {
             const digitos = String(valor || '').replace(/\D/g, '');
             if (!digitos) return '';
@@ -623,6 +727,7 @@
             document.getElementById('btn-buscar-cpf').addEventListener('click', buscarCliente);
             document.getElementById('btn-usar-cliente-rapido').addEventListener('click', selecionarClienteRapido);
             document.getElementById('form-processo').addEventListener('submit', salvarProcesso);
+            initClientesSync();
             carregarClientesRapido();
 
             // Enter no campo CPF
@@ -652,29 +757,42 @@
         // =====================================================================
         // SELEÇÃO RÁPIDA DE CLIENTES CADASTRADOS
         // =====================================================================
-
         async function carregarClientesRapido() {
             try {
-                await API.clientes.listar(function(clientes, source) {
-                    listaClientesCache = Array.isArray(clientes) ? clientes : [];
-                    clientesById = {};
-                    listaClientesCache.forEach(function(c) {
-                        if (c && c.id) clientesById[String(c.id)] = c;
-                    });
+                // 0) Cache imediato (deixa a tela rápida)
+                const cached = Utils.Cache.get(CLIENTES_CACHE_KEY);
+                if (Array.isArray(cached) && cached.length) {
+                    listaClientesCache = cached;
+                    rebuildClientesIndex();
                     popularDatalistClientes();
-                    if (source === 'cache') renderSugestoesClientes();
-                });
-                renderSugestoesClientes();
+                    renderSugestoesClientes();
+                }
+
+                // 1) Rede em background (atualiza sem travar)
+                const rede = await API.call('listarClientes', {}, 'POST', true);
+                if (Array.isArray(rede)) {
+                    listaClientesCache = rede;
+                    rebuildClientesIndex();
+                    popularDatalistClientes();
+                    renderSugestoesClientes();
+                    salvarClientesNoCache();
+                    broadcastClientesUpdated();
+                }
             } catch (e) {
                 console.warn('Não foi possível carregar clientes para seleção rápida:', e.message || e);
             }
         }
-
         function popularDatalistClientes() {
             const datalist = document.getElementById('clientes-lista');
             if (!datalist) return;
+
             datalist.innerHTML = '';
-            listaClientesCache.forEach(function(c) {
+
+            // Limite para evitar “lag” quando existir MUITOS clientes
+            const max = 500;
+            const lista = (listaClientesCache || []).slice(0, max);
+
+            lista.forEach(function(c) {
                 const opt = document.createElement('option');
                 const nome = c.nome_completo || '';
                 const cpf = c.cpf || '';
@@ -732,73 +850,126 @@
                 });
             });
         }
-
         async function selecionarClienteRapido(clienteIdForcado) {
             const input = document.getElementById('cliente-busca-rapida');
             const termoBruto = String(input.value || '').trim();
             const termo = termoBruto.toLowerCase();
 
-            if (!termoBruto && !clienteIdForcado) {
-                Utils.showToast('Digite um cliente para selecionar.', 'warning');
-                input.focus();
-                return;
+            const btnUsar = document.getElementById('btn-usar-cliente-rapido');
+            if (btnUsar) {
+                btnUsar.classList.add('btn-loading');
+                btnUsar.disabled = true;
             }
 
-            let cliente = null;
-
-            // 1) Clique direto na sugestão (mais confiável)
-            if (clienteIdForcado) {
-                cliente = clientesById[String(clienteIdForcado)] || null;
-            }
-
-            // 2) Match exato por string da opção (nome | cpf | email)
-            if (!cliente && termoBruto.includes('|')) {
-                cliente = listaClientesCache.find(function(c) {
-                    const valor = (String(c.nome_completo || '') + ' | ' + String(c.cpf || '') + ' | ' + String(c.email || '')).toLowerCase();
-                    return valor === termo;
-                }) || null;
-            }
-
-            // 3) CPF completo digitado (11 dígitos)
-            if (!cliente) {
-                const cpfTermo = termoBruto.replace(/\D/g, '');
-                if (cpfTermo.length === 11) {
-                    cliente = listaClientesCache.find(function(c) {
-                        const cpf = String(c.cpf || '').replace(/\D/g, '');
-                        return cpf === cpfTermo;
-                    }) || null;
-                }
-            }
-
-            // 4) fallback por filtro, mas só aceita se retornar único
-            if (!cliente) {
-                const candidatos = filtrarClientesRapido(termoBruto);
-                if (candidatos.length === 1) {
-                    cliente = candidatos[0];
-                } else if (candidatos.length > 1) {
-                    Utils.showToast('Há mais de um cliente parecido. Clique na sugestão correta.', 'warning');
-                    renderSugestoesClientes();
+            try {
+                if (!termoBruto && !clienteIdForcado) {
+                    Utils.showToast('Digite um cliente para selecionar.', 'warning');
+                    input.focus();
                     return;
                 }
-            }
 
-            if (!cliente) {
-                Utils.showToast('Cliente não encontrado na lista. Use a busca por CPF abaixo.', 'warning');
-                return;
-            }
+                let cliente = null;
 
-            // Busca dados completos pelo ID para evitar CPF mascarado no vínculo
-            try {
-                if (cliente.id) {
-                    const completo = await API.clientes.buscarPorId(cliente.id);
-                    if (completo && completo.id) cliente = completo;
+                // 1) Clique direto na sugestão
+                if (clienteIdForcado) {
+                    cliente = clientesById[String(clienteIdForcado)] || null;
                 }
-            } catch (e) {
-                console.warn('Falha ao buscar cliente completo por ID, usando dados locais.', e);
-            }
 
-            mostrarClienteEncontrado(cliente);
-            document.getElementById('cpf-busca').value = formatarCPFParaExibicao(cliente.cpf);
+                // 2) Tentativas: ID, CPF, Email, Nome
+                if (!cliente && termoBruto) {
+
+                    // ID direto
+                    if (/^\d+$/.test(termoBruto)) {
+                        cliente = clientesById[String(termoBruto)] || null;
+                    }
+
+                    // CPF (digits)
+                    if (!cliente) {
+                        const digits = termoBruto.replace(/\D/g, '');
+                        if (digits.length >= 6) {
+                            const candidatosCpf = (listaClientesCache || []).filter(function(c) {
+                                const cCpf = String(c.cpf || '').replace(/\D/g, '');
+                                return cCpf && cCpf.includes(digits);
+                            });
+
+                            if (candidatosCpf.length === 1) cliente = candidatosCpf[0];
+                            else if (candidatosCpf.length > 1) {
+                                Utils.showToast('Encontrei mais de 1 cliente com esse CPF. Refine a busca.', 'warning');
+                                renderSugestoesClientes();
+                                return;
+                            }
+                        }
+                    }
+
+                    // Email exato
+                    if (!cliente && termo.includes('@')) {
+                        const byEmail = (listaClientesCache || []).filter(function(c) {
+                            return String(c.email || '').toLowerCase() === termo;
+                        });
+
+                        if (byEmail.length === 1) cliente = byEmail[0];
+                        else if (byEmail.length > 1) {
+                            Utils.showToast('Encontrei mais de 1 cliente com esse email. Refine a busca.', 'warning');
+                            renderSugestoesClientes();
+                            return;
+                        }
+                    }
+
+                    // Nome contém
+                    if (!cliente && termo.length >= 3) {
+                        const byNome = (listaClientesCache || []).filter(function(c) {
+                            return String(c.nome_completo || '').toLowerCase().includes(termo);
+                        });
+
+                        if (byNome.length === 1) cliente = byNome[0];
+                        else if (byNome.length > 1) {
+                            Utils.showToast('Encontrei mais de 1 cliente com esse nome. Clique na sugestão desejada.', 'warning');
+                            renderSugestoesClientes();
+                            return;
+                        }
+                    }
+                }
+
+                if (!cliente) {
+                    Utils.showToast('Cliente não encontrado na lista. Use a busca por CPF abaixo.', 'warning');
+                    return;
+                }
+
+                // Esconde sugestões ao selecionar
+                const sug = document.getElementById('clientes-sugestoes');
+                if (sug) sug.classList.add('hidden');
+
+                // ✅ Mostra IMEDIATO (sem aguardar planilha)
+                mostrarClienteEncontrado(cliente);
+
+                const cpfInput = document.getElementById('cpf-busca');
+                if (cpfInput) cpfInput.value = formatarCPFParaExibicao(cliente.cpf);
+
+                // ✅ Busca dados completos em BACKGROUND (não trava)
+                if (cliente.id) {
+                    API.clientes.buscarPorId(cliente.id)
+                        .then(function(completo) {
+                            if (completo && completo.id) {
+                                upsertClienteNaSelecaoRapida(completo);
+
+                                // Se ainda for o mesmo selecionado, atualiza “por cima”
+                                if (clienteSelecionado && String(clienteSelecionado.id) === String(completo.id)) {
+                                    mostrarClienteEncontrado(completo);
+                                    if (cpfInput) cpfInput.value = formatarCPFParaExibicao(completo.cpf);
+                                }
+                            }
+                        })
+                        .catch(function(err) {
+                            console.warn('Falha ao buscar cliente completo (background):', err);
+                        });
+                }
+
+            } finally {
+                if (btnUsar) {
+                    btnUsar.classList.remove('btn-loading');
+                    btnUsar.disabled = false;
+                }
+            }
         }
 
         // =====================================================================
@@ -972,6 +1143,7 @@
                 });
 
                 clienteSelecionado = resultado;
+                upsertClienteNaSelecaoRapida(resultado);
                 Utils.showToast('Cliente cadastrado com sucesso!', 'success');
 
                 // Avança para o passo 2
