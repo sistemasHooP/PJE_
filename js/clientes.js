@@ -65,26 +65,48 @@
             };
 
             try {
+                Utils.showLoading("Cadastrando cliente...");
                 await API.clientes.cadastrar(payload);
                 Utils.showToast('Cliente cadastrado com sucesso!', 'success');
                 e.target.reset();
                 carregarClientes();
             } catch (err) {
                 Utils.showToast(err.message || 'Erro ao cadastrar cliente.', 'error');
+            } finally {
+                Utils.hideLoading();
             }
         });
     }
 
     async function carregarClientes() {
         const tbody = document.getElementById('lista-clientes');
+        const btnRefresh = document.getElementById('btn-atualizar-clientes');
+        const iconRefresh = document.getElementById('icon-refresh');
+
+        // UI INICIAL (Feedback de carregamento)
         tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-slate-400">Carregando clientes...</td></tr>';
+        
+        if (btnRefresh) btnRefresh.disabled = true;
+        if (iconRefresh) iconRefresh.classList.add('animate-spin');
+
         try {
-            await API.clientes.listar(function(resultado) {
-                clientes = Array.isArray(resultado) ? resultado : [];
-                renderClientes(document.getElementById('busca-clientes').value || '');
-            });
+            // Se passar callback, a API usa cache + rede. 
+            // Mas aqui queremos forçar atualização da lista, então chamamos sem callback para usar o Promise direto da API (que no api.js está configurado para refresh se não passar callback, ou ajustamos aqui).
+            // NOTA: Conforme seu api.js, API.clientes.listar retorna Promise.
+            
+            clientes = await API.clientes.listar();
+            renderClientes(document.getElementById('busca-clientes').value || '');
+            
+            // Pequeno toast para confirmar
+            if(btnRefresh) Utils.showToast("Lista de clientes atualizada.", "info");
+
         } catch (e) {
+            console.error(e);
             tbody.innerHTML = '<tr><td colspan="5" class="py-6 text-center text-red-500">Erro ao carregar clientes.</td></tr>';
+        } finally {
+            // UI FINAL (Restaura botões)
+            if (btnRefresh) btnRefresh.disabled = false;
+            if (iconRefresh) iconRefresh.classList.remove('animate-spin');
         }
     }
 
