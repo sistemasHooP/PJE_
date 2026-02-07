@@ -1,42 +1,43 @@
-/* * ============================================================================
- * ARQUIVO: css/style.css
- * DESCRIÇÃO: Estilos globais e customizações específicas que o Tailwind não cobre.
- * ============================================================================
- */
+/* ============================================================================
+   ARQUIVO: css/style.css
+   DESCRIÇÃO: Estilos globais + utilitários do Portal Jurídico (PWA)
+   ATUALIZAÇÃO: Spinner de carregamento em botões (.btn-loading)
+   ============================================================================ */
 
-/* --- Configurações Base --- */
+/* Base */
+* {
+    -webkit-tap-highlight-color: transparent;
+}
+
 html {
     scroll-behavior: smooth;
-    -webkit-tap-highlight-color: transparent; /* Remove flash cinza ao clicar em mobile */
 }
 
 body {
-    font-family: 'Inter', sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
 }
 
-/* --- Scrollbar Personalizada (Webkit - Chrome/Safari/Edge) --- */
-/* Deixa a barra de rolagem mais elegante em desktops */
+/* Scrollbar (Desktop) */
 ::-webkit-scrollbar {
-    width: 8px;
-    height: 8px;
+    width: 10px;
+    height: 10px;
 }
 
 ::-webkit-scrollbar-track {
-    background: #f1f5f9; /* Slate-100 */
+    background: #f1f5f9;
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1; /* Slate-300 */
-    border-radius: 4px;
+    background: #cbd5e1;
+    border-radius: 9999px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8; /* Slate-400 */
+    background: #94a3b8;
 }
 
-/* --- Suporte a Mobile (Safe Areas para iPhone X+) --- */
+/* Safe area (iOS) */
 .pb-safe {
     padding-bottom: env(safe-area-inset-bottom);
 }
@@ -45,46 +46,75 @@ body {
     padding-top: env(safe-area-inset-top);
 }
 
-/* --- Estilos Específicos da Timeline (Detalhe do Processo) --- */
-/* Cria a linha vertical cinza que conecta as bolinhas */
-.timeline-line {
-    position: relative;
+/* Utilitário: quebra texto longo */
+.break-word {
+    overflow-wrap: break-word;
+    word-break: break-word;
 }
 
+/* Timeline (detalhe do processo) */
 .timeline-line::before {
-    content: '';
+    content: "";
     position: absolute;
+    left: 0.75rem; /* 12px */
     top: 0;
     bottom: 0;
-    /* Alinha a linha vertical com o centro das bolinhas */
-    /* A bolinha tem w-8 (2rem) ou w-10 (2.5rem). Metade é aprox 1rem + padding esquerdo */
-    left: 1rem; 
     width: 2px;
-    background-color: #e2e8f0; /* Slate-200 */
-    z-index: 0;
+    background: rgb(226 232 240); /* slate-200 */
 }
 
-/* Ajuste fino para telas maiores (Desktop) onde a bolinha é maior */
-@media (min-width: 768px) {
-    .timeline-line::before {
-        left: 1.25rem; /* 20px */
+/* Fade in */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(6px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
     }
 }
 
-/* --- Animações Personalizadas --- */
-@keyframes fadeIn {
-    from { opacity: 0; transform: translateY(10px); }
-    to { opacity: 1; transform: translateY(0); }
+.animate-fadeIn {
+    animation: fadeIn 0.25s ease-out both;
 }
 
-.animate-fade-in {
-    animation: fadeIn 0.3s ease-out forwards;
+/* ============================================================================
+   BOTÕES COM LOADING (Spinner)
+   - Use em botões que disparam requisições e podem demorar.
+   - Como usar no JS:
+       btn.classList.add('btn-loading');
+       ...
+       btn.classList.remove('btn-loading');
+   ============================================================================ */
+
+@keyframes btnSpin {
+    to { transform: rotate(360deg); }
 }
 
-/* --- Utilitários de Texto --- */
-/* Garante que textos longos não quebrem o layout */
-.break-word {
-    word-wrap: break-word;
-    word-break: break-word; 
-    overflow-wrap: break-word;
+/* padrão: spinner branco (botões com fundo azul/escuro) */
+.btn-loading {
+    position: relative;
+    pointer-events: none;
+    opacity: 0.88;
+}
+
+.btn-loading::after {
+    content: "";
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    width: 16px;
+    height: 16px;
+    margin-top: -8px;
+    border-radius: 9999px;
+    border: 2px solid rgba(255, 255, 255, 0.35);
+    border-top-color: rgba(255, 255, 255, 0.95);
+    animation: btnSpin 0.8s linear infinite;
+}
+
+/* opção para botões claros (texto escuro) */
+.btn-loading.btn-loading--dark::after {
+    border-color: rgba(15, 23, 42, 0.25);       /* slate-900 com alpha */
+    border-top-color: rgba(15, 23, 42, 0.90);
 }
