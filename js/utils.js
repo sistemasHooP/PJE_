@@ -1,28 +1,16 @@
 /**
  * ============================================================================
  * ARQUIVO: js/utils.js
- * DESCRIÇÃO: Biblioteca de funções utilitárias do Front-End.
- * ATUALIZAÇÃO: Restauração de addSyncButton, máscaras e formatações de status.
+ * DESCRIÇÃO: Biblioteca de funções utilitárias.
+ * ATUALIZAÇÃO: Loader com suporte a ícones personalizados (Banco de Dados).
  * ============================================================================
  */
 
 const Utils = {
 
-    /**
-     * Normaliza texto removendo acentos e deixando minúsculo.
-     * CRUCIAL PARA A BUSCA FUNCIONAR.
-     */
-    normalizeText: function(text) {
-        if (!text) return '';
-        return String(text)
-            .normalize("NFD")
-            .replace(/[\u0300-\u036f]/g, "")
-            .toLowerCase();
-    },
-
     // --- CACHE INTELIGENTE ---
     Cache: {
-        set: function(key, data, ttlInMinutes = 30) {
+        set: function(key, data, ttlInMinutes = 5) {
             const now = new Date();
             const item = { value: data, expiry: now.getTime() + (ttlInMinutes * 60 * 1000) };
             try { localStorage.setItem(key, JSON.stringify(item)); } catch (e) { console.warn("Cache cheio", e); }
@@ -42,140 +30,136 @@ const Utils = {
         }
     },
 
-    // --- INTERFACE (UI) ---
+    // --- COMPRESSOR ---
+    Compressor: {
+        compressImage: function(file) {
+            return new Promise((resolve, reject) => {
+                const maxWidth = 1600; const quality = 0.7;
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = function(event) {
+                    const img = new Image();
+                    img.src = event.target.result;
+                    img.onload = function() {
+                        let width = img.width; let height = img.height;
+                        if (width > maxWidth) { height = Math.round((height * maxWidth) / width); width = maxWidth; }
+                        const canvas = document.createElement('canvas'); canvas.width = width; canvas.height = height;
+                        const ctx = canvas.getContext('2d'); ctx.drawImage(img, 0, 0, width, height);
+                        const dataUrl = canvas.toDataURL('image/jpeg', quality);
+                        resolve({ base64: dataUrl.split(',')[1], mimeType: 'image/jpeg', nome: file.name.replace(/\.[^/.]+$/, "") + ".jpg" });
+                    };
+                    img.onerror = () => reject(new Error("Erro na imagem."));
+                };
+                reader.onerror = () => reject(new Error("Erro ao ler arquivo."));
+            });
+        }
+    },
+
+    // --- UI (User Interface) ---
 
     /**
-     * Adiciona um botão flutuante ou fixo para sincronizar dados (limpar cache).
-     * Usado no Dashboard e Lista de Processos.
+     * Exibe a tela de carregamento.
+     * @param {string} message - Texto a exibir.
+     * @param {string} type - 'spinner' (padrão) ou 'database' (ícone de banco).
      */
-    addSyncButton: function(callback) {
-        // Remove botão anterior se existir para evitar duplicidade
-        const existing = document.getElementById('fab-sync-btn');
-        if (existing) existing.remove();
-
-        const btn = document.createElement('button');
-        btn.id = 'fab-sync-btn';
-        btn.className = 'fixed bottom-20 right-4 md:bottom-8 md:right-8 bg-indigo-600 hover:bg-indigo-700 text-white p-3 rounded-full shadow-lg transition-all z-40 flex items-center justify-center group';
-        btn.innerHTML = `
-            <svg class="w-6 h-6 group-hover:rotate-180 transition-transform duration-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path>
-            </svg>
-            <span class="max-w-0 overflow-hidden whitespace-nowrap group-hover:max-w-xs group-hover:ml-2 transition-all duration-300 text-sm font-medium">Sincronizar</span>
-        `;
+    showLoading: function(message = "Carregando...", type = 'spinner') {
+        let loader = document.getElementById('global-loader');
         
-        btn.onclick = function() {
-            // Animação de rotação
-            const icon = btn.querySelector('svg');
-            icon.classList.add('animate-spin');
-            
-            // Limpa todo o cache relacionado a listas
-            Utils.Cache.clear('listar');
-            Utils.Cache.clear('getDashboard');
-            
-            // Feedback
-            Utils.showToast("Sincronizando dados...", "info");
-            
-            // Executa a função de recarga da página
-            if (typeof callback === 'function') {
-                callback().then(() => {
-                    setTimeout(() => icon.classList.remove('animate-spin'), 500);
-                    Utils.showToast("Dados atualizados!", "success");
-                });
-            }
-        };
-
-        document.body.appendChild(btn);
-    },
-
-    showToast: function(message, type = 'info') {
-        const existing = document.getElementById('toast-notification');
-        if (existing) existing.remove();
-
-        const colors = {
-            success: 'bg-emerald-600',
-            error: 'bg-red-600',
-            warning: 'bg-amber-500',
-            info: 'bg-slate-700'
-        };
-
-        const toast = document.createElement('div');
-        toast.id = 'toast-notification';
-        toast.className = `fixed top-5 right-5 ${colors[type] || colors.info} text-white px-6 py-3 rounded-lg shadow-xl z-50 transform transition-all duration-300 translate-y-[-20px] opacity-0 flex items-center`;
+        // Ícones SVG
+        const iconSpinner = `<div class="animate-spin rounded-full h-14 w-14 border-t-4 border-b-4 border-blue-600 mb-4"></div>`;
         
-        let icon = '';
-        if (type === 'success') icon = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg>';
-        if (type === 'error') icon = '<svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>';
-
-        toast.innerHTML = `${icon}<span class="font-medium">${message}</span>`;
-        document.body.appendChild(toast);
-
-        requestAnimationFrame(() => {
-            toast.classList.remove('translate-y-[-20px]', 'opacity-0');
-        });
-
-        setTimeout(() => {
-            toast.classList.add('opacity-0', 'translate-y-[-20px]');
-            setTimeout(() => toast.remove(), 300);
-        }, 3000);
-    },
-
-    showLoading: function(message = 'Carregando...', iconType = 'default') {
-        const existing = document.getElementById('global-loader');
-        if (existing) return;
-
-        let svgIcon = '';
-        if (iconType === 'database') {
-            svgIcon = '<svg class="animate-bounce h-10 w-10 text-blue-500 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path></svg>';
-        } else {
-            svgIcon = `<svg class="animate-spin h-10 w-10 text-blue-600 mb-4" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
-                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                       </svg>`;
-        }
-
-        const loader = document.createElement('div');
-        loader.id = 'global-loader';
-        loader.className = 'fixed inset-0 bg-slate-900/80 z-[60] flex flex-col items-center justify-center backdrop-blur-sm transition-opacity duration-300';
-        loader.innerHTML = `
-            <div class="bg-white p-6 rounded-2xl shadow-2xl flex flex-col items-center animate-bounce-small">
-                ${svgIcon}
-                <span class="text-slate-700 font-semibold text-sm tracking-wide">${message}</span>
+        const iconDatabase = `
+            <div class="mb-4 relative">
+                <svg class="w-16 h-16 text-blue-600 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="M4 7v10c0 2.21 3.582 4 8 4s8-1.79 8-4V7M4 7c0 2.21 3.582 4 8 4s8-1.79 8-4M4 7c0-2.21 3.582-4 8-4s8 1.79 8 4m0 5c0 2.21-3.582 4-8 4s-8-1.79-8-4"></path>
+                </svg>
+                <div class="absolute -bottom-1 -right-1 bg-green-500 rounded-full p-1 border-2 border-white animate-bounce">
+                    <svg class="w-4 h-4 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M5 13l4 4L19 7"></path></svg>
+                </div>
             </div>
         `;
-        document.body.appendChild(loader);
+
+        const selectedIcon = (type === 'database') ? iconDatabase : iconSpinner;
+
+        if (!loader) {
+            loader = document.createElement('div');
+            loader.id = 'global-loader';
+            loader.className = 'fixed inset-0 z-[100] flex flex-col items-center justify-center bg-slate-900 bg-opacity-90 backdrop-blur-sm transition-opacity duration-300';
+            
+            loader.innerHTML = `
+                <div class="flex flex-col items-center p-8">
+                    <div id="loader-icon">${selectedIcon}</div>
+                    <p id="loader-message" class="text-white font-medium text-lg tracking-wide text-center">${message}</p>
+                    <p class="text-slate-400 text-xs mt-2 animate-pulse">Por favor, aguarde...</p>
+                </div>
+            `;
+            document.body.appendChild(loader);
+        } else {
+            const msgEl = document.getElementById('loader-message');
+            const iconEl = document.getElementById('loader-icon');
+            if(msgEl) msgEl.textContent = message;
+            if(iconEl) iconEl.innerHTML = selectedIcon;
+        }
+        
+        loader.classList.remove('hidden');
+        loader.classList.add('flex');
     },
 
     hideLoading: function() {
         const loader = document.getElementById('global-loader');
         if (loader) {
-            loader.classList.add('opacity-0');
-            setTimeout(() => loader.remove(), 300);
+            loader.classList.add('hidden');
+            loader.classList.remove('flex');
         }
     },
 
-    navigateTo: function(page) {
-        window.location.href = page;
+    showToast: function(message, type = 'info') {
+        let container = document.getElementById('toast-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'toast-container';
+            container.className = 'fixed top-4 right-4 z-[110] flex flex-col gap-2 max-w-xs w-full px-4 sm:px-0 pointer-events-none';
+            document.body.appendChild(container);
+        }
+
+        const colors = {
+            success: 'bg-green-600 text-white shadow-lg',
+            error: 'bg-red-600 text-white shadow-lg',
+            warning: 'bg-amber-500 text-white shadow-lg',
+            info: 'bg-slate-800 text-white shadow-lg'
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `pointer-events-auto flex items-center w-full p-4 rounded-lg shadow-xl transform transition-all duration-300 translate-x-full ${colors[type] || colors.info}`;
+        toast.innerHTML = `<span class="font-medium">${message}</span>`;
+
+        container.appendChild(toast);
+        requestAnimationFrame(() => toast.classList.remove('translate-x-full'));
+        setTimeout(() => {
+            toast.classList.add('opacity-0', 'translate-x-full');
+            setTimeout(() => { if(toast.parentElement) toast.remove(); }, 300);
+        }, 3000);
     },
 
-    // --- FORMATAÇÃO DE DADOS ---
-    
-    formatCPF: function(cpf) {
-        if (!cpf) return '';
-        const v = String(cpf).replace(/\D/g, '');
-        if (v.length !== 11) return cpf;
-        return v.replace(/(\d{3})(\d{3})(\d{3})(\d{2})/, "$1.$2.$3-$4");
-    },
+    addSyncButton: function(onClickAction) {
+        const oldBtn = document.getElementById('floating-sync-btn');
+        if(oldBtn) oldBtn.remove();
 
-    formatTelefone: function(tel) {
-        if (!tel) return '';
-        const v = String(tel).replace(/\D/g, '');
-        if (v.length === 11) return v.replace(/(\d{2})(\d{5})(\d{4})/, "($1) $2-$3");
-        if (v.length === 10) return v.replace(/(\d{2})(\d{4})(\d{4})/, "($1) $2-$3");
-        return tel;
+        const btn = document.createElement('button');
+        btn.id = 'floating-sync-btn';
+        btn.className = 'fixed bottom-20 right-4 md:bottom-8 md:right-8 z-40 bg-slate-800 hover:bg-slate-700 text-white p-4 rounded-full shadow-xl hover:shadow-2xl transition-all active:scale-90 flex items-center justify-center';
+        btn.innerHTML = `<svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"></path></svg>`;
+        btn.title = "Sincronizar";
+        
+        btn.onclick = function() {
+            btn.querySelector('svg').classList.add('animate-spin');
+            onClickAction().finally(() => { setTimeout(() => btn.querySelector('svg').classList.remove('animate-spin'), 1000); });
+        };
+        document.body.appendChild(btn);
     },
 
     formatDate: function(dateInput) {
-        if (!dateInput) return '';
+        if (!dateInput) return '-';
         const date = new Date(dateInput);
         if (isNaN(date.getTime())) return dateInput;
         const day = String(date.getDate()).padStart(2, '0');
@@ -184,19 +168,15 @@ const Utils = {
         return `${day}/${month}/${year}`;
     },
 
-    // --- HELPERS DE STATUS (Processos) ---
-
     getStatusClass: function(status) {
-        if (!status) return 'bg-slate-100 text-slate-800 border-slate-200';
-        const s = String(status).toUpperCase().trim();
-        
-        switch (s) {
+        if (!status) return 'bg-slate-100 text-slate-800';
+        switch (status.toUpperCase()) {
             case 'EM ANDAMENTO': return 'bg-blue-100 text-blue-800 border-blue-200';
             case 'JULGADO': return 'bg-emerald-100 text-emerald-800 border-emerald-200';
             case 'ARQUIVADO': return 'bg-slate-100 text-slate-600 border-slate-200';
             case 'SOBRESTADO': return 'bg-amber-100 text-amber-800 border-amber-200';
             case 'CANCELADO': return 'bg-red-100 text-red-800 border-red-200';
-            default: return 'bg-slate-100 text-slate-800 border-slate-200';
+            default: return 'bg-slate-100 text-slate-800';
         }
     },
 
@@ -205,33 +185,12 @@ const Utils = {
             'EM ANDAMENTO': 'Processo fluindo normalmente.',
             'JULGADO': 'Decisão final proferida.',
             'SOBRESTADO': 'Pausado aguardando decisão externa.',
-            'ARQUIVADO': 'Processo finalizado e guardado.',
-            'CANCELADO': 'Processo anulado ou desistência.'
+            'ARQUIVADO': 'Processo finalizado e arquivado.',
+            'CANCELADO': 'Processo anulado.'
         };
-        return map[String(status).toUpperCase()] || 'Status do processo.';
+        return map[status.toUpperCase()] || '';
     },
 
-    // --- MÁSCARAS DE INPUT (UX) ---
-
-    maskCPFInput: function(e) {
-        let v = e.target.value.replace(/\D/g, '');
-        v = v.substring(0, 11);
-        v = v.replace(/(\d{3})(\d)/, '$1.$2');
-        v = v.replace(/(\d{3})(\d)/, '$1.$2');
-        v = v.replace(/(\d{3})(\d{1,2})$/, '$1-$2');
-        e.target.value = v;
-    },
-
-    maskPhoneInput: function(e) {
-        let v = e.target.value.replace(/\D/g, '');
-        v = v.substring(0, 11);
-        if (v.length > 10) { // Celular 11 dígitos
-            v = v.replace(/^(\d{2})(\d{5})(\d{4})/, '($1) $2-$3');
-        } else if (v.length > 5) {
-            v = v.replace(/^(\d{2})(\d{4})(\d{0,4})/, '($1) $2-$3');
-        } else if (v.length > 2) {
-            v = v.replace(/^(\d{2})(\d{0,5})/, '($1) $2');
-        }
-        e.target.value = v;
-    }
+    navigateTo: function(page) { window.location.href = page; },
+    escapeHtml: function(text) { return text ? text.replace(/</g, "&lt;").replace(/>/g, "&gt;") : ""; }
 };
