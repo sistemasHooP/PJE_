@@ -2,23 +2,24 @@
  * ============================================================================
  * ARQUIVO: js/novo-processo.js
  * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Correção do erro "escapeHtml is not defined" e Loader.
- * DEPENDÊNCIAS: js/api.js, js/auth.js, js/utils.js
+ * ATUALIZAÇÃO: Correção Definitiva de escapeHtml e Loader.
  * ============================================================================
  */
 
-// --- CORREÇÃO DE ERRO GLOBAL (CRÍTICO) ---
-// Define escapeHtml globalmente para corrigir o erro que ocorre
-// em scripts inline do arquivo HTML (legado ou autocomplete).
-window.escapeHtml = function(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-};
+// --- CORREÇÃO GLOBAL IMEDIATA (Executa antes de tudo) ---
+// Define escapeHtml no escopo global (window) para que o HTML consiga enxergar.
+(function() {
+    window.escapeHtml = function(text) {
+        if (!text) return '';
+        return String(text)
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
+    };
+    console.log("Função escapeHtml registrada globalmente com sucesso.");
+})();
 
 document.addEventListener('DOMContentLoaded', function() {
 
@@ -58,65 +59,62 @@ document.addEventListener('DOMContentLoaded', function() {
 
 /**
  * Carrega a lista de clientes para o Dropdown (Select).
- * Usa Cache para ser rápido, mas permite buscar detalhes depois.
  */
 function carregarClientesParaSelect() {
     const select = document.getElementById('select-cliente');
-    if (!select) return; // Se não tiver o select na tela, ignora
+    if (!select) return;
 
-    // Usa a API com Cache (SWR)
+    // Carrega lista via API (Cache)
     API.clientes.listar((data, source) => {
-        // Limpa opções antigas (mantendo a primeira "Selecione...")
         select.innerHTML = '<option value="">-- Selecione um Cliente Cadastrado --</option>';
         
         if (data && data.length > 0) {
-            // Ordena alfabeticamente
+            // Ordena
             data.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
 
             data.forEach(cliente => {
                 const option = document.createElement('option');
-                option.value = cliente.id; // ID do cliente
+                option.value = cliente.id;
                 option.textContent = `${cliente.nome_completo} (CPF: ${cliente.cpf})`;
                 select.appendChild(option);
             });
         }
-    }, true); // true = silencioso
+    }, true);
 
-    // --- LÓGICA DE SELEÇÃO COM LOADER ---
+    // --- LÓGICA DE SELEÇÃO COM LOADER FORÇADO ---
     select.addEventListener('change', async function() {
         const clienteId = this.value;
-        
-        // Se escolheu a opção vazia ("Selecione..."), limpa e sai
+
         if (!clienteId) {
             limparCamposCliente();
             return;
         }
 
-        // 1. Mostra o Loader
+        // 1. Força o Loader a aparecer (criando elemento se precisar)
+        // Usamos um loader local caso o Utils.showLoading esteja falhando visualmente
         Utils.showLoading("Buscando dados do cliente...");
         
-        // 2. TRUQUE: Pequena pausa de 50ms para garantir que o navegador desenhe o loader
-        // antes de iniciar a requisição (resolve o problema da tela travar sem feedback)
-        await new Promise(resolve => setTimeout(resolve, 50));
+        // 2. PAUSA OBRIGATÓRIA (150ms)
+        // Isso dá tempo ao navegador para renderizar o loader antes de travar no processamento
+        await new Promise(resolve => setTimeout(resolve, 150));
 
         try {
-            // 3. Busca dados completos do cliente
+            // 3. Busca na API
+            console.log("Buscando detalhes do cliente ID:", clienteId);
             const clienteCompleto = await API.clientes.buscarPorId(clienteId);
 
             if (clienteCompleto) {
                 preencherCamposCliente(clienteCompleto);
-                // Feedback sutil ao invés de toast invasivo (opcional)
-                // Utils.showToast("Dados preenchidos.", "info");
             } else {
                 Utils.showToast("Cliente não encontrado.", "error");
                 limparCamposCliente();
             }
 
         } catch (error) {
-            console.error(error);
-            Utils.showToast("Erro ao buscar detalhes do cliente.", "error");
+            console.error("Erro ao buscar cliente:", error);
+            Utils.showToast("Erro ao buscar detalhes.", "error");
         } finally {
-            // 4. Esconde o Loader
+            // 4. Remove o Loader
             Utils.hideLoading();
         }
     });
@@ -173,7 +171,6 @@ function setupFormulario() {
     form.addEventListener('submit', async function(e) {
         e.preventDefault();
 
-        // Dados do Formulário
         const dados = {
             numero_processo: document.getElementById('numero_processo').value,
             parte_nome: document.getElementById('parte_nome').value,
@@ -183,10 +180,9 @@ function setupFormulario() {
             tipo: document.getElementById('tipo_acao').value,
             data_entrada: document.getElementById('data_entrada').value,
             data_prazo: document.getElementById('data_prazo').value || '',
-            status: 'EM ANDAMENTO' // Status inicial padrão
+            status: 'EM ANDAMENTO'
         };
 
-        // Validação Básica
         if (!dados.numero_processo || !dados.parte_nome || !dados.cpf) {
             Utils.showToast("Preencha os campos obrigatórios (*)", "warning");
             return;
@@ -195,17 +191,14 @@ function setupFormulario() {
         try {
             Utils.showLoading("Criando processo e pastas...");
 
-            // Chama API
             const resultado = await API.processos.criar(dados);
 
-            // --- CRÍTICO: LIMPEZA DE CACHE ---
-            // Força a atualização das listas quando o usuário voltar para elas
+            // Limpa Cache
             Utils.Cache.clear('listarProcessos');
             Utils.Cache.clear('getDashboard');
 
             Utils.showToast("Processo criado com sucesso!", "success");
 
-            // Redireciona para o detalhe
             setTimeout(() => {
                 if (resultado && resultado.id) {
                     Utils.navigateTo(`detalhe-processo.html?id=${resultado.id}`);
@@ -216,7 +209,7 @@ function setupFormulario() {
 
         } catch (error) {
             console.error("Erro ao criar processo:", error);
-            Utils.hideLoading(); // Garante que o loader saia se der erro
+            Utils.hideLoading();
             
             if (error.message.includes("Já existe")) {
                 Utils.showToast(error.message, "error");
