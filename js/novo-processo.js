@@ -1,284 +1,390 @@
 /**
  * ============================================================================
- * ARQUIVO: js/novo-processo.js
- * DESCRIÇÃO: Lógica de cadastro de novos processos.
- * ATUALIZAÇÃO: Loader Personalizado "Procurando no Banco de Dados".
+ * ARQUIVO: novo-processo.js
+ * DESCRIÇÃO: Wizard de criação de processo (2 steps) COM CACHE
+ * VERSÃO: 3.0 - OTIMIZADO com cache de clientes
+ * FIX: Usa cache do preload + atualiza após cadastro inline
  * ============================================================================
  */
 
-// 1. CORREÇÃO GLOBAL IMEDIATA (CRÍTICO)
-// Define a função escapeHtml na janela global para corrigir o erro do console.
-// Se o HTML chamar isso, a função já existirá.
-window.escapeHtml = function(text) {
-    if (!text) return '';
-    return String(text)
-        .replace(/&/g, "&amp;")
-        .replace(/</g, "&lt;")
-        .replace(/>/g, "&gt;")
-        .replace(/"/g, "&quot;")
-        .replace(/'/g, "&#039;");
-};
+let clienteSelecionado = null;
+let clientesCache = []; // Cache local da página
 
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', async function() {
+  // Verifica autenticação
+  if (!Auth.isAuthenticated()) {
+    window.location.href = './index.html';
+    return;
+  }
 
-    // 2. Proteção de Rota
-    if (!Auth.protectRoute()) return;
+  // Carrega clientes do cache (preload do login)
+  await carregarClientesDoCache();
 
-    // 3. Atualizar UI do Usuário
-    Auth.updateUserInfoUI();
-    const user = Auth.getUser();
-    if (user && user.nome) {
-        const initials = user.nome.substring(0, 1).toUpperCase();
-        const avatarEl = document.getElementById('user-initials');
-        if (avatarEl) avatarEl.textContent = initials;
-    }
-
-    // 4. Configurar Logout Desktop
-    const btnLogoutDesktop = document.getElementById('desktop-logout-btn');
-    if (btnLogoutDesktop) {
-        btnLogoutDesktop.addEventListener('click', function() {
-            if (confirm('Deseja realmente sair do sistema?')) {
-                Auth.logout();
-            }
-        });
-    }
-
-    // 5. Configurar Data Padrão
-    const dataInput = document.getElementById('data_entrada');
-    if (dataInput && !dataInput.value) {
-        dataInput.valueAsDate = new Date();
-    }
-
-    // 6. Inicializar Funcionalidades
-    setupMascaras();
-    carregarClientesParaSelect();
-    setupFormulario();
+  // Configuração do wizard
+  configurarWizard();
+  configurarBuscaCliente();
+  configurarFormularioProcesso();
 });
 
-// --- FUNÇÕES DE INTERFACE (LOADER PERSONALIZADO) ---
+// ═══════════════════════════════════════════════════════════════════════════
+// 🚀 CARREGA CLIENTES DO CACHE (INSTANTÂNEO)
+// ═══════════════════════════════════════════════════════════════════════════
 
-function showCustomDbLoader() {
-    // Remove se já existir
-    const existing = document.getElementById('db-search-loader');
-    if (existing) existing.remove();
+async function carregarClientesDoCache() {
+  try {
+    console.log('📦 [NovoProcesso] Carregando clientes do cache...');
 
-    // Cria o overlay (fundo escuro transparente)
-    const overlay = document.createElement('div');
-    overlay.id = 'db-search-loader';
-    overlay.className = 'fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center backdrop-blur-sm transition-opacity duration-300';
+    // Tenta buscar do cache (salvo no login)
+    clientesCache = Cache.get('lista_clientes') || [];
+
+    if (clientesCache.length > 0) {
+      console.log(`✅ [NovoProcesso] ${clientesCache.length} clientes carregados do cache (instantâneo)`);
+      return;
+    }
+
+    // Se não tem cache, busca da rede (fallback)
+    console.log('⚠️ [NovoProcesso] Cache vazio. Buscando da rede...');
     
-    // Conteúdo do Loader (Caixa branca centralizada)
-    overlay.innerHTML = `
-        <div class="bg-white p-8 rounded-2xl shadow-2xl flex flex-col items-center justify-center transform scale-100 transition-transform duration-300 max-w-sm w-full mx-4 border border-slate-200">
-            
-            <!-- Ícone Personalizado (Banco de Dados + Lupa) -->
-            <div class="relative w-20 h-20 mb-6">
-                <!-- Base de Dados -->
-                <svg class="w-20 h-20 text-blue-100" fill="currentColor" viewBox="0 0 24 24">
-                    <path d="M12 2C6.48 2 2 4.02 2 6.5S6.48 11 12 11s10-2.02 10-4.5S17.52 2 12 2zm0 18c-5.52 0-10-2.02-10-4.5v3C2 20.98 6.48 23 12 23s10-2.02 10-4.5v-3c0 2.48-4.48 4.5-10 4.5zM2 9v4.5c0 2.48 4.48 4.5 10 4.5s10-2.02 10-4.5V9c0 2.48-4.48 4.5-10 4.5S2 11.48 2 9z"/>
-                </svg>
-                
-                <!-- Lupa Animada (Pingando) -->
-                <div class="absolute -bottom-2 -right-2 bg-blue-600 rounded-full p-2 animate-bounce shadow-lg">
-                    <svg class="w-6 h-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                </div>
-            </div>
+    const loadingMsg = UI.showToast('Carregando lista de clientes...', 'info', 0);
 
-            <h3 class="text-xl font-bold text-slate-800 mb-2 text-center">Procurando dados...</h3>
-            <p class="text-slate-500 text-sm text-center">Consultando cliente no Banco de Dados</p>
-            
-            <!-- Barra de Progresso Infinita -->
-            <div class="w-full bg-slate-100 h-1.5 mt-6 rounded-full overflow-hidden">
-                <div class="bg-blue-600 h-1.5 rounded-full w-1/2 animate-[shimmer_1s_infinite_linear]" style="position:relative; left:-50%;"></div>
-            </div>
+    try {
+      clientesCache = await API.call('listarClientes');
+      
+      // Salva no cache para próximas vezes
+      Cache.set('lista_clientes', clientesCache, 30 * 60 * 1000);
+      
+      UI.hideToast(loadingMsg);
+      
+      console.log(`✅ [NovoProcesso] ${clientesCache.length} clientes carregados da rede`);
+
+    } catch (error) {
+      UI.hideToast(loadingMsg);
+      console.error('❌ [NovoProcesso] Erro ao carregar clientes:', error);
+      UI.showToast('Não foi possível carregar a lista de clientes', 'error');
+    }
+
+  } catch (error) {
+    console.error('❌ [NovoProcesso] Erro ao acessar cache:', error);
+  }
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+// BUSCA DE CLIENTE (INSTANT SEARCH NO CACHE)
+// ═══════════════════════════════════════════════════════════════════════════
+
+function configurarBuscaCliente() {
+  const inputBusca = document.getElementById('busca_cliente');
+  const resultadosDiv = document.getElementById('resultados_busca');
+  const btnNovoCli = document.getElementById('btn_novo_cliente_inline');
+  const formNovoCli = document.getElementById('form_novo_cliente');
+  const btnCancelarCadastro = document.getElementById('btn_cancelar_cadastro');
+
+  if (!inputBusca) return;
+
+  // ═══════════════════════════════════════════════════════════════
+  // INSTANT SEARCH (busca no cache local - sem requisição de rede)
+  // ═══════════════════════════════════════════════════════════════
+
+  let timeoutBusca;
+
+  inputBusca.addEventListener('input', function(e) {
+    clearTimeout(timeoutBusca);
+
+    const termo = e.target.value.trim();
+
+    // Limpa resultados se menos de 2 caracteres
+    if (termo.length < 2) {
+      resultadosDiv.innerHTML = '';
+      resultadosDiv.classList.add('hidden');
+      return;
+    }
+
+    // Debounce de 200ms para não sobrecarregar a interface
+    timeoutBusca = setTimeout(() => {
+      buscarClienteNoCache(termo);
+    }, 200);
+  });
+
+  /**
+   * Busca cliente no cache local (INSTANTÂNEO - sem rede)
+   */
+  function buscarClienteNoCache(termo) {
+    if (clientesCache.length === 0) {
+      resultadosDiv.innerHTML = '<div class="p-4 text-gray-500">Lista de clientes não carregada</div>';
+      resultadosDiv.classList.remove('hidden');
+      return;
+    }
+
+    // Normaliza termo de busca
+    const termoNormalizado = termo
+      .toLowerCase()
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+
+    // Busca em todos os campos
+    const resultados = clientesCache.filter(cliente => {
+      // Busca por nome
+      const nome = (cliente.nome_completo || '')
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '');
+
+      // Busca por CPF (limpo)
+      const cpf = (cliente.cpf || '').replace(/\D/g, '');
+      const termoNumerico = termo.replace(/\D/g, '');
+
+      // Busca por email
+      const email = (cliente.email || '').toLowerCase();
+
+      return nome.includes(termoNormalizado) || 
+             cpf.includes(termoNumerico) || 
+             email.includes(termoNormalizado);
+    });
+
+    console.log(`🔍 [Busca] "${termo}" → ${resultados.length} resultado(s) (instantâneo)`);
+
+    // Exibe resultados
+    if (resultados.length === 0) {
+      resultadosDiv.innerHTML = `
+        <div class="p-4 text-center">
+          <p class="text-gray-600 mb-2">Nenhum cliente encontrado</p>
+          <button 
+            id="btn_cadastrar_inline" 
+            class="text-blue-600 hover:text-blue-800 text-sm font-medium"
+          >
+            + Cadastrar novo cliente
+          </button>
         </div>
-        
-        <style>
-            @keyframes shimmer {
-                0% { transform: translateX(-100%); }
-                100% { transform: translateX(300%); }
-            }
-        </style>
-    `;
+      `;
 
-    document.body.appendChild(overlay);
-}
+      document.getElementById('btn_cadastrar_inline').addEventListener('click', () => {
+        mostrarFormularioCadastro();
+      });
 
-function hideCustomDbLoader() {
-    const overlay = document.getElementById('db-search-loader');
-    if (overlay) {
-        // Efeito visual de saída
-        overlay.classList.add('opacity-0');
-        setTimeout(() => overlay.remove(), 300);
-    }
-}
+    } else {
+      // Limita a 5 resultados
+      const top5 = resultados.slice(0, 5);
 
+      resultadosDiv.innerHTML = top5.map(cliente => `
+        <div 
+          class="p-3 hover:bg-gray-100 cursor-pointer border-b border-gray-200 transition-colors"
+          data-cliente-id="${cliente.id}"
+        >
+          <div class="font-medium text-gray-900">${cliente.nome_completo}</div>
+          <div class="text-sm text-gray-600">
+            CPF: ${cliente.cpf_mascarado || cliente.cpf} • ${cliente.email}
+          </div>
+        </div>
+      `).join('');
 
-/**
- * Carrega a lista de clientes para o Dropdown (Select).
- */
-function carregarClientesParaSelect() {
-    const select = document.getElementById('select-cliente');
-    if (!select) return;
-
-    // Carrega lista via API (Cache)
-    API.clientes.listar((data, source) => {
-        select.innerHTML = '<option value="">-- Selecione um Cliente Cadastrado --</option>';
-        
-        if (data && data.length > 0) {
-            data.sort((a, b) => a.nome_completo.localeCompare(b.nome_completo));
-
-            data.forEach(cliente => {
-                const option = document.createElement('option');
-                option.value = cliente.id;
-                option.textContent = `${cliente.nome_completo} (CPF: ${cliente.cpf})`;
-                select.appendChild(option);
-            });
-        }
-    }, true);
-
-    // --- EVENTO DE SELEÇÃO COM LOADER PERSONALIZADO ---
-    select.addEventListener('change', async function() {
-        const clienteId = this.value;
-
-        if (!clienteId) {
-            limparCamposCliente();
-            return;
-        }
-
-        // 1. MOSTRA A TELA DE BUSCA PERSONALIZADA
-        showCustomDbLoader();
-        
-        // 2. DELAY FORÇADO (0.8 segundos)
-        // Isso garante que a animação apareça e o usuário tenha tempo de ver "Procurando no banco..."
-        await new Promise(resolve => setTimeout(resolve, 800));
-
-        try {
-            // 3. Busca na API
-            const clienteCompleto = await API.clientes.buscarPorId(clienteId);
-
-            if (clienteCompleto) {
-                preencherCamposCliente(clienteCompleto);
-                Utils.showToast("✅ Dados carregados com sucesso!", "success");
-            } else {
-                Utils.showToast("Cliente não encontrado.", "error");
-                limparCamposCliente();
-            }
-
-        } catch (error) {
-            console.error("Erro ao buscar cliente:", error);
-            Utils.showToast("Erro ao comunicar com o servidor.", "error");
-        } finally {
-            // 4. REMOVE A TELA DE BUSCA
-            hideCustomDbLoader();
-        }
-    });
-}
-
-function preencherCamposCliente(cliente) {
-    setValue('parte_nome', cliente.nome_completo);
-    setValue('cpf', cliente.cpf);
-    setValue('email', cliente.email);
-    setValue('telefone', cliente.telefone);
-}
-
-function limparCamposCliente() {
-    setValue('parte_nome', '');
-    setValue('cpf', '');
-    setValue('email', '');
-    setValue('telefone', '');
-}
-
-function setValue(id, value) {
-    const el = document.getElementById(id);
-    if (el) el.value = value || '';
-}
-
-function setupMascaras() {
-    // Máscara CPF
-    const cpfInput = document.getElementById('cpf');
-    if (cpfInput) {
-        cpfInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '').substring(0, 11);
-            if (value.length > 9) value = value.replace(/(\d{3})(\d{3})(\d{3})(\d{1,2})/, '$1.$2.$3-$4');
-            else if (value.length > 6) value = value.replace(/(\d{3})(\d{3})(\d{1,3})/, '$1.$2.$3');
-            else if (value.length > 3) value = value.replace(/(\d{3})(\d{1,3})/, '$1.$2');
-            e.target.value = value;
+      // Adiciona eventos de clique
+      resultadosDiv.querySelectorAll('[data-cliente-id]').forEach(div => {
+        div.addEventListener('click', function() {
+          const clienteId = this.dataset.clienteId;
+          const cliente = clientesCache.find(c => c.id === clienteId);
+          selecionarCliente(cliente);
         });
+      });
     }
 
-    // Máscara Telefone
-    const telInput = document.getElementById('telefone');
-    if (telInput) {
-        telInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '').substring(0, 11);
-            if (value.length > 6) value = value.replace(/(\d{2})(\d{5})(\d{0,4})/, '($1) $2-$3');
-            else if (value.length > 2) value = value.replace(/(\d{2})(\d{0,5})/, '($1) $2');
-            e.target.value = value;
-        });
+    resultadosDiv.classList.remove('hidden');
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // SELEÇÃO DE CLIENTE
+  // ═══════════════════════════════════════════════════════════════
+
+  function selecionarCliente(cliente) {
+    clienteSelecionado = cliente;
+
+    inputBusca.value = `${cliente.nome_completo} - ${cliente.cpf_mascarado || cliente.cpf}`;
+    resultadosDiv.innerHTML = '';
+    resultadosDiv.classList.add('hidden');
+
+    // Habilita botão "Próximo"
+    document.getElementById('btn_proximo_step').disabled = false;
+
+    console.log('✅ [Cliente] Selecionado:', cliente.nome_completo);
+  }
+
+  // ═══════════════════════════════════════════════════════════════
+  // CADASTRO INLINE DE CLIENTE
+  // ═══════════════════════════════════════════════════════════════
+
+  btnNovoCli.addEventListener('click', mostrarFormularioCadastro);
+  btnCancelarCadastro.addEventListener('click', esconderFormularioCadastro);
+
+  function mostrarFormularioCadastro() {
+    formNovoCli.classList.remove('hidden');
+    btnNovoCli.classList.add('hidden');
+    document.getElementById('novo_cliente_nome').focus();
+  }
+
+  function esconderFormularioCadastro() {
+    formNovoCli.classList.add('hidden');
+    btnNovoCli.classList.remove('hidden');
+    formNovoCli.reset();
+  }
+
+  // Submit do formulário de cadastro inline
+  document.getElementById('form_novo_cliente_inline').addEventListener('submit', async function(e) {
+    e.preventDefault();
+
+    const nome = document.getElementById('novo_cliente_nome').value.trim();
+    const cpf = document.getElementById('novo_cliente_cpf').value.replace(/\D/g, '');
+    const email = document.getElementById('novo_cliente_email').value.trim();
+    const telefone = document.getElementById('novo_cliente_telefone').value.replace(/\D/g, '');
+
+    if (!nome || !cpf || !email) {
+      UI.showToast('Preencha todos os campos obrigatórios', 'error');
+      return;
     }
+
+    const btnSalvar = document.getElementById('btn_salvar_cliente_inline');
+    btnSalvar.disabled = true;
+    btnSalvar.textContent = 'Salvando...';
+
+    try {
+      // Cadastra o cliente
+      const novoCliente = await API.call('cadastrarCliente', {
+        nome_completo: nome,
+        cpf: cpf,
+        email: email,
+        telefone: telefone
+      });
+
+      console.log('✅ [Cliente] Cadastrado:', novoCliente);
+
+      // 🔥 ATUALIZAÇÃO AUTOMÁTICA DO CACHE (sem precisar recarregar página)
+      clientesCache.push(novoCliente);
+      
+      // Ordena alfabeticamente
+      clientesCache.sort((a, b) => {
+        return (a.nome_completo || '').localeCompare(b.nome_completo || '');
+      });
+
+      // Atualiza cache persistente
+      Cache.set('lista_clientes', clientesCache, 30 * 60 * 1000);
+
+      console.log('🔄 [Cache] Atualizado com novo cliente');
+
+      UI.showToast('Cliente cadastrado com sucesso!', 'success');
+
+      // Seleciona automaticamente o cliente recém-cadastrado
+      selecionarCliente(novoCliente);
+
+      // Esconde formulário
+      esconderFormularioCadastro();
+
+    } catch (error) {
+      console.error('❌ [Cliente] Erro ao cadastrar:', error);
+      UI.showToast(error.message || 'Erro ao cadastrar cliente', 'error');
+
+    } finally {
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = 'Salvar Cliente';
+    }
+  });
+
+  // Click fora fecha resultados
+  document.addEventListener('click', function(e) {
+    if (!inputBusca.contains(e.target) && !resultadosDiv.contains(e.target)) {
+      resultadosDiv.classList.add('hidden');
+    }
+  });
 }
 
-function setupFormulario() {
-    const form = document.querySelector('form');
-    if (!form) return;
+// ═══════════════════════════════════════════════════════════════════════════
+// WIZARD (CONTROLE DE STEPS)
+// ═══════════════════════════════════════════════════════════════════════════
 
-    form.addEventListener('submit', async function(e) {
-        e.preventDefault();
+function configurarWizard() {
+  const step1 = document.getElementById('step_1');
+  const step2 = document.getElementById('step_2');
+  const btnProximo = document.getElementById('btn_proximo_step');
+  const btnVoltar = document.getElementById('btn_voltar_step');
 
-        const dados = {
-            numero_processo: document.getElementById('numero_processo').value,
-            parte_nome: document.getElementById('parte_nome').value,
-            cpf: document.getElementById('cpf').value,
-            email: document.getElementById('email').value,
-            telefone: document.getElementById('telefone').value,
-            tipo: document.getElementById('tipo_acao').value,
-            data_entrada: document.getElementById('data_entrada').value,
-            data_prazo: document.getElementById('data_prazo').value || '',
-            status: 'EM ANDAMENTO'
-        };
+  btnProximo.addEventListener('click', () => {
+    if (!clienteSelecionado) {
+      UI.showToast('Selecione um cliente para continuar', 'warning');
+      return;
+    }
 
-        if (!dados.numero_processo || !dados.parte_nome || !dados.cpf) {
-            Utils.showToast("Preencha os campos obrigatórios (*)", "warning");
-            return;
-        }
+    step1.classList.add('hidden');
+    step2.classList.remove('hidden');
 
-        try {
-            Utils.showLoading("Criando processo e pastas...");
+    // Preenche info do cliente no step 2
+    document.getElementById('cliente_info_nome').textContent = clienteSelecionado.nome_completo;
+    document.getElementById('cliente_info_cpf').textContent = clienteSelecionado.cpf_mascarado || clienteSelecionado.cpf;
+  });
 
-            const resultado = await API.processos.criar(dados);
+  btnVoltar.addEventListener('click', () => {
+    step2.classList.add('hidden');
+    step1.classList.remove('hidden');
+  });
+}
 
-            // Limpa Cache
-            Utils.Cache.clear('listarProcessos');
-            Utils.Cache.clear('getDashboard');
+// ═══════════════════════════════════════════════════════════════════════════
+// FORMULÁRIO DE PROCESSO (STEP 2)
+// ═══════════════════════════════════════════════════════════════════════════
 
-            Utils.showToast("Processo criado com sucesso!", "success");
+function configurarFormularioProcesso() {
+  const form = document.getElementById('form_processo');
 
-            setTimeout(() => {
-                if (resultado && resultado.id) {
-                    Utils.navigateTo(`detalhe-processo.html?id=${resultado.id}`);
-                } else {
-                    Utils.navigateTo('processos.html');
-                }
-            }, 1000);
+  form.addEventListener('submit', async function(e) {
+    e.preventDefault();
 
-        } catch (error) {
-            console.error("Erro ao criar processo:", error);
-            Utils.hideLoading();
-            
-            if (error.message.includes("Já existe")) {
-                Utils.showToast(error.message, "error");
-                const campoNumero = document.getElementById('numero_processo');
-                if(campoNumero) {
-                    campoNumero.focus();
-                    campoNumero.classList.add('border-red-500');
-                    setTimeout(() => campoNumero.classList.remove('border-red-500'), 3000);
-                }
-            } else {
-                Utils.showToast(error.message || "Erro ao criar processo.", "error");
-            }
-        }
-    });
+    if (!clienteSelecionado) {
+      UI.showToast('Cliente não selecionado', 'error');
+      return;
+    }
+
+    const numero = document.getElementById('numero_processo').value.trim();
+    const tipoAcao = document.getElementById('tipo_acao').value;
+    const vara = document.getElementById('vara').value.trim();
+    const dataEntrada = document.getElementById('data_entrada').value;
+    const valorCausa = document.getElementById('valor_causa').value;
+    const observacoes = document.getElementById('observacoes').value.trim();
+
+    if (!numero || !tipoAcao || !dataEntrada) {
+      UI.showToast('Preencha todos os campos obrigatórios', 'error');
+      return;
+    }
+
+    const btnSalvar = document.getElementById('btn_criar_processo');
+    btnSalvar.disabled = true;
+    btnSalvar.innerHTML = '<span class="animate-spin">⏳</span> Criando processo...';
+
+    try {
+      const novoProcesso = await API.call('criarProcesso', {
+        cliente_id: clienteSelecionado.id,
+        cpf: clienteSelecionado.cpf, // CPF limpo para vínculo
+        numero_processo: numero,
+        tipo_acao: tipoAcao,
+        vara: vara,
+        data_entrada: dataEntrada,
+        valor_causa: valorCausa,
+        observacoes: observacoes
+      });
+
+      console.log('✅ [Processo] Criado:', novoProcesso);
+
+      UI.showToast('Processo criado com sucesso!', 'success');
+
+      // Invalida cache de processos (para atualizar dashboard e lista)
+      Cache.remove('lista_processos');
+      Cache.remove('dashboard_stats');
+
+      setTimeout(() => {
+        window.location.href = './processos.html';
+      }, 1000);
+
+    } catch (error) {
+      console.error('❌ [Processo] Erro:', error);
+      UI.showToast(error.message || 'Erro ao criar processo', 'error');
+
+      btnSalvar.disabled = false;
+      btnSalvar.textContent = 'Criar Processo';
+    }
+  });
 }
