@@ -2,8 +2,7 @@
  * ============================================================================
  * ARQUIVO: login.js
  * DESCRIÇÃO: Autenticação do advogado com PRELOAD de clientes
- * VERSÃO: 2.1 - CORRIGIDO para IDs com hífen + validação robusta
- * FIX: Adiciona verificação de elementos e compatibilidade com HTML existente
+ * VERSÃO: 2.1 - CORRIGIDO e COMPLETO
  * ============================================================================
  */
 
@@ -39,8 +38,8 @@ document.addEventListener('DOMContentLoaded', function() {
                      document.querySelector('input[name="password"]') ||
                      document.querySelector('input[type="password"]');
 
-  const loginButton = document.getElementById('loginButton') || 
-                      document.getElementById('btn-login') ||
+  const loginButton = document.getElementById('btn-login') ||
+                      document.getElementById('loginButton') ||
                       document.querySelector('button[type="submit"]') ||
                       loginForm.querySelector('button');
 
@@ -96,7 +95,7 @@ document.addEventListener('DOMContentLoaded', function() {
     // Desabilita botão e mostra loading
     if (loginButton) {
       loginButton.disabled = true;
-      loginButton.textContent = 'Autenticando...';
+      loginButton.innerHTML = '<div class="spinner border-white"></div><span>Autenticando...</span>';
     }
 
     if (loadingDiv) {
@@ -169,7 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
       
       if (loginButton) {
         loginButton.disabled = false;
-        loginButton.textContent = 'ACESSAR SISTEMA';
+        loginButton.innerHTML = '<span>ACESSAR SISTEMA</span>';
       }
       
       if (loadingDiv) {
@@ -269,8 +268,8 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof UI !== 'undefined' && typeof UI.showToast === 'function') {
       UI.showToast(mensagem, 'error');
     } else {
-      // Fallback para alert
-      alert('Erro: ' + mensagem);
+      // Fallback: cria toast simples
+      criarToast(mensagem, 'error');
     }
   }
 
@@ -280,7 +279,38 @@ document.addEventListener('DOMContentLoaded', function() {
     // Tenta usar UI.showToast se disponível
     if (typeof UI !== 'undefined' && typeof UI.showToast === 'function') {
       UI.showToast(mensagem, 'success');
+    } else {
+      // Fallback: cria toast simples
+      criarToast(mensagem, 'success');
     }
+  }
+
+  /**
+   * Cria um toast simples (fallback se UI.showToast não existir)
+   */
+  function criarToast(mensagem, tipo) {
+    const container = document.getElementById('toast-container') || document.body;
+    
+    const cores = {
+      success: 'bg-green-500',
+      error: 'bg-red-500',
+      warning: 'bg-yellow-500',
+      info: 'bg-blue-500'
+    };
+    
+    const toast = document.createElement('div');
+    toast.className = `${cores[tipo] || cores.info} text-white px-6 py-3 rounded-lg shadow-lg animate-fade-in`;
+    toast.textContent = mensagem;
+    
+    container.appendChild(toast);
+    
+    setTimeout(function() {
+      toast.style.opacity = '0';
+      toast.style.transition = 'opacity 0.3s';
+      setTimeout(function() {
+        toast.remove();
+      }, 300);
+    }, 3000);
   }
 
   // ═══════════════════════════════════════════════════════════════════════════
